@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { mockDepartments, mockDevices } from '@/data/mockData';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,9 +62,11 @@ export default function Departments() {
                 <span className="font-medium">{getDepartmentDeviceCount(dept.id)}</span>
               </div>
               <div className="pt-3 border-t border-border">
-                <Button variant="outline" size="sm" className="w-full">
-                  View Details
-                </Button>
+                <Link to={`/departments/${dept.id}`}>
+                  <Button variant="outline" size="sm" className="w-full">
+                    View Details
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
