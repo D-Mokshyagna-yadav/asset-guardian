@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Server, AlertCircle } from 'lucide-react';
+import { mockUsers } from '@/data/mockData';
+import { Server, AlertCircle, Copy, Check } from 'lucide-react';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -29,6 +30,26 @@ export default function Login() {
     } else {
       setError('Invalid email or password');
     }
+  };
+
+  const handleCopyEmail = (userEmail: string) => {
+    navigator.clipboard.writeText(userEmail);
+    setCopiedEmail(userEmail);
+    setTimeout(() => setCopiedEmail(null), 2000);
+  };
+
+  // Group users by role
+  const usersByRole = mockUsers.reduce((acc, user) => {
+    const role = user.role;
+    if (!acc[role]) {
+      acc[role] = [];
+    }
+    acc[role].push(user);
+    return acc;
+  }, {} as Record<string, typeof mockUsers>);
+
+  const roleOrder = ['SUPER_ADMIN', 'MANAGER', 'IT_STAFF', 'DEPARTMENT_INCHARGE'];
+  const sortedRoles = roleOrder.filter(role => usersByRole[role]) }
   };
 
   return (
@@ -82,20 +103,56 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
                   className="h-11"
-                />
+                />4 font-semibold">Demo Credentials (Password: demo123 for all)</p>
+              <div className="space-y-3 text-xs max-h-96 overflow-y-auto">
+                {sortedRoles.map((role) => {
+                  const roleLabel = role
+                    .split('_')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                    .join(' ');
+                  
+                  return (
+                    <div key={role} className="space-y-2">
+                      <div className="text-xs font-semibold text-primary px-2 py-1 rounded bg-primary/10">
+                        {roleLabel}
+                      </div>
+                      {usersByRole[role]?.map((user) => (
+                        <div
+                          key={user.id}
+                          className="p-3 rounded bg-muted/50 border border-border/50 hover:border-border transition"
+                        >
+                          <div className="flex items-start justify-between gap-2 mb-2">
+                            <div className="flex-1">
+                              <p className="font-medium text-foreground">{user.name}</p>
+                              <p className="text-xs text-muted-foreground mt-1 font-mono break-all">
+                                {user.email}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setEmail(user.email);
+                                setPassword('demo123');
+                              }}
+                              className="px-2 py-1 rounded bg-primary/20 text-primary hover:bg-primary/30 transition text-xs font-medium whitespace-nowrap"
+                            >
+                              Use
+                            </button>
+                          </div>
+                          {user.departmentId && (
+                            <p className="text-xs text-muted-foreground">
+                              Dept: {user.departmentId}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
               </div>
-
-              <Button
-                type="submit"
-                className="w-full h-11 bg-primary hover:bg-primary/90"
-                disabled={isLoading}
-              >
-                {isLoading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
-                    <span>Signing in...</span>
-                  </div>
-                ) : (
+              <div className="mt-4 p-3 rounded bg-blue-50 border border-blue-200">
+                <p className="text-xs text-blue-900 font-medium">
+                  ℹ️ All demo accounts use password: <span className="font-mono font-bold">demo123</span>
+                </p
                   'Sign in'
                 )}
               </Button>

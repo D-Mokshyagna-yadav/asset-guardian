@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { User, AuthState } from '@/types';
+import { mockUsers } from '@/data/mockData';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
@@ -8,43 +9,8 @@ interface AuthContextType extends AuthState {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock user data for demo
-const mockUsers: Record<string, { password: string; user: User }> = {
-  'admin@college.edu': {
-    password: 'admin123',
-    user: {
-      id: '1',
-      name: 'John Administrator',
-      email: 'admin@college.edu',
-      role: 'SUPER_ADMIN',
-      isActive: true,
-      createdAt: '2024-01-01',
-    },
-  },
-  'staff@college.edu': {
-    password: 'staff123',
-    user: {
-      id: '2',
-      name: 'Sarah Tech',
-      email: 'staff@college.edu',
-      role: 'IT_STAFF',
-      isActive: true,
-      createdAt: '2024-01-15',
-    },
-  },
-  'hod@college.edu': {
-    password: 'hod123',
-    user: {
-      id: '3',
-      name: 'Dr. Michael Dean',
-      email: 'hod@college.edu',
-      role: 'DEPARTMENT_INCHARGE',
-      departmentId: 'dept-1',
-      isActive: true,
-      createdAt: '2024-02-01',
-    },
-  },
-};
+// Demo password for all mock users
+const DEMO_PASSWORD = 'demo123';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>({
@@ -59,10 +25,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    const userData = mockUsers[email];
-    if (userData && userData.password === password) {
+    // Find user by email from mockUsers
+    const user = mockUsers.find(u => u.email === email);
+    
+    // Check if user exists and password matches
+    if (user && password === DEMO_PASSWORD) {
       setAuthState({
-        user: userData.user,
+        user,
         isAuthenticated: true,
         isLoading: false,
       });

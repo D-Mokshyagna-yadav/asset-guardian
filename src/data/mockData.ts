@@ -6,6 +6,8 @@ export const mockUsers: User[] = [
   { id: '3', name: 'Mike Davis', email: 'mike@college.edu', role: 'IT_STAFF', departmentId: 'dept-2', isActive: true, createdAt: '2024-01-05' },
   { id: '4', name: 'Emily Brown', email: 'emily@college.edu', role: 'DEPARTMENT_INCHARGE', departmentId: 'dept-1', isActive: true, createdAt: '2024-01-10' },
   { id: '5', name: 'David Wilson', email: 'david@college.edu', role: 'DEPARTMENT_INCHARGE', departmentId: 'dept-3', isActive: true, createdAt: '2024-01-10' },
+  { id: '6', name: 'Device Manager 2', email: 'manager2@college.edu', role: 'MANAGER', departmentId: 'dept-2', isActive: true, createdAt: '2024-01-08' },
+  { id: '8', name: 'Asset Manager', email: 'assetmgr@college.edu', role: 'MANAGER', isActive: true, createdAt: '2024-01-08' },
 ];
 
 export const mockDepartments: Department[] = [
@@ -47,6 +49,7 @@ export const mockDevices: Device[] = [
     departmentId: 'dept-1',
     locationId: 'loc-3',
     inchargeUserId: '2',
+    managerId: '7',
     features: ['48 Ports', 'PoE Support', '10Gbps Uplinks'],
     notes: 'Core network infrastructure device',
     createdBy: '1',
@@ -77,6 +80,7 @@ export const mockDevices: Device[] = [
     departmentId: 'dept-1',
     locationId: 'loc-1',
     inchargeUserId: '2',
+    managerId: '7',
     features: ['WiFi 6E', 'PoE Support'],
     notes: 'Lab access point for student Wi-Fi',
     createdBy: '1',
@@ -107,6 +111,7 @@ export const mockDevices: Device[] = [
     departmentId: 'dept-1',
     locationId: 'loc-3',
     inchargeUserId: '2',
+    managerId: '9',
     features: ['2x Intel Xeon', '128GB RAM', 'Dual 10Gbps NIC'],
     notes: 'Primary database server',
     createdBy: '1',
@@ -131,6 +136,7 @@ export const mockDevices: Device[] = [
     quantity: 1,
     warrantyStart: '2024-03-01',
     warrantyEnd: '2025-03-01',
+    managerId: '9',
     status: 'IN_STOCK',
     features: ['Network Printing', 'Duplex Print'],
     notes: 'Office printer spare',

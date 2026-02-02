@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { AlertCircle, ArrowLeft, Plus, X } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { mockDevices, mockDepartments, mockLocations } from '@/data/mockData';
+import { mockDevices, mockDepartments, mockLocations, mockUsers } from '@/data/mockData';
 import { Device } from '@/types';
 
 const DEVICE_CATEGORIES = [
@@ -60,6 +60,7 @@ export default function DeviceForm() {
     departmentId: existingDevice?.departmentId || '',
     locationId: existingDevice?.locationId || '',
     inchargeUserId: existingDevice?.inchargeUserId || '',
+    managerId: existingDevice?.managerId || '',
     features: existingDevice?.features || [],
     notes: existingDevice?.notes || '',
   });
@@ -119,6 +120,7 @@ export default function DeviceForm() {
         departmentId: formData.departmentId || undefined,
         locationId: formData.locationId || undefined,
         inchargeUserId: formData.inchargeUserId || undefined,
+        managerId: formData.managerId || undefined,
         features: formData.features.length > 0 ? formData.features : undefined,
         notes: formData.notes || undefined,
         createdBy: existingDevice?.createdBy || '1',
@@ -541,6 +543,21 @@ export default function DeviceForm() {
                       onChange={handleChange}
                       placeholder="User ID"
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="managerId">Device Manager</Label>
+                    <Select value={formData.managerId} onValueChange={(value) => handleSelectChange('managerId', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select manager" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Not Assigned</SelectItem>
+                        {mockUsers.filter(u => u.role === 'MANAGER' || u.role === 'SUPER_ADMIN').map(user => (
+                          <SelectItem key={user.id} value={user.id}>{user.name} ({user.role})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

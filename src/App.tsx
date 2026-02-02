@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
 import DeviceDetails from "./pages/DeviceDetails";
 import DeviceForm from "./pages/DeviceForm";
+import DeviceManagement from "./pages/DeviceManagement";
 import Departments from "./pages/Departments";
 import DepartmentDetails from "./pages/DepartmentDetails";
 import DepartmentForm from "./pages/DepartmentForm";
@@ -21,6 +22,8 @@ import AuditLogDetails from "./pages/AuditLogDetails";
 import Assignments from "./pages/Assignments";
 import AssignmentDetails from "./pages/AssignmentDetails";
 import AssignmentForm from "./pages/AssignmentForm";
+import AssignmentManagement from "./pages/AssignmentManagement";
+import ManagerDashboard from "./pages/ManagerDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,10 +47,26 @@ const App = () => (
               }
             >
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route
+                path="/manager-dashboard"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                    <ManagerDashboard />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/inventory/new" element={<DeviceForm />} />
               <Route path="/inventory/:id" element={<DeviceDetails />} />
               <Route path="/inventory/:id/edit" element={<DeviceForm />} />
+              <Route
+                path="/device-management"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                    <DeviceManagement />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/departments"
                 element={
@@ -85,6 +104,14 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
                     <Assignments />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/assignment-management"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGER', 'IT_STAFF']}>
+                    <AssignmentManagement />
                   </ProtectedRoute>
                 }
               />

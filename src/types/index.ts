@@ -1,4 +1,4 @@
-export type UserRole = 'SUPER_ADMIN' | 'IT_STAFF' | 'DEPARTMENT_INCHARGE';
+export type UserRole = 'SUPER_ADMIN' | 'MANAGER' | 'IT_STAFF' | 'DEPARTMENT_INCHARGE';
 
 export type DeviceStatus = 'IN_STOCK' | 'ISSUED' | 'INSTALLED' | 'MAINTENANCE' | 'SCRAPPED';
 
@@ -57,6 +57,7 @@ export interface Device {
   departmentId?: string;
   locationId?: string;
   inchargeUserId?: string;
+  managerId?: string;
   features?: string[];
   notes?: string;
   createdBy: string;
