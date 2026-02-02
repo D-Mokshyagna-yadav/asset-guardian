@@ -33,7 +33,9 @@ export default function Assignments() {
         </div>
         <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
           <Plus className="h-4 w-4 mr-2" />
-          New Assignment
+          <Link to="/assignments/new" className="no-underline">
+            New Assignment
+          </Link>
         </Button>
       </div>
 

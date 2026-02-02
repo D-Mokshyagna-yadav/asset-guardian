@@ -10,14 +10,17 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
 import DeviceDetails from "./pages/DeviceDetails";
+import DeviceForm from "./pages/DeviceForm";
 import Departments from "./pages/Departments";
 import DepartmentDetails from "./pages/DepartmentDetails";
+import DepartmentForm from "./pages/DepartmentForm";
 import Users from "./pages/Users";
 import UserDetails from "./pages/UserDetails";
 import AuditLogs from "./pages/AuditLogs";
 import AuditLogDetails from "./pages/AuditLogDetails";
 import Assignments from "./pages/Assignments";
 import AssignmentDetails from "./pages/AssignmentDetails";
+import AssignmentForm from "./pages/AssignmentForm";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,12 +45,22 @@ const App = () => (
             >
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/inventory" element={<Inventory />} />
+              <Route path="/inventory/new" element={<DeviceForm />} />
               <Route path="/inventory/:id" element={<DeviceDetails />} />
+              <Route path="/inventory/:id/edit" element={<DeviceForm />} />
               <Route
                 path="/departments"
                 element={
                   <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
                     <Departments />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/departments/new"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
+                    <DepartmentForm />
                   </ProtectedRoute>
                 }
               />
@@ -60,6 +73,14 @@ const App = () => (
                 }
               />
               <Route
+                path="/departments/:id/edit"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
+                    <DepartmentForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/assignments"
                 element={
                   <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
@@ -68,10 +89,26 @@ const App = () => (
                 }
               />
               <Route
+                path="/assignments/new"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
+                    <AssignmentForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/assignments/:id"
                 element={
                   <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
                     <AssignmentDetails />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/assignments/:id/edit"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
+                    <AssignmentForm />
                   </ProtectedRoute>
                 }
               />

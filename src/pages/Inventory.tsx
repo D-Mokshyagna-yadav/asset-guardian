@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { mockDevices, mockDepartments, mockLocations } from '@/data/mockData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Input } from '@/components/ui/input';
@@ -17,7 +18,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Search, Plus, Filter, Eye, Edit, Trash2 } from 'lucide-react';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import { Search, Plus, Filter, Eye, Edit, Trash2, BarChart3 } from 'lucide-react';
 import { DeviceStatus, Device } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -66,10 +73,12 @@ export default function Inventory() {
           <p className="text-muted-foreground mt-1">Manage all IT devices and equipment</p>
         </div>
         {canEdit && (
-          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Device
-          </Button>
+          <Link to="/inventory/new">
+            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Device
+            </Button>
+          </Link>
         )}
       </div>
 
@@ -118,73 +127,143 @@ export default function Inventory() {
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-muted/50 border-b border-border">
-                <tr>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Asset Tag</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Device</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Category</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Department</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Location</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Status</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filteredDevices.map((device) => (
-                  <tr key={device.id} className="table-row-hover">
-                    <td className="px-6 py-4 text-sm font-mono text-foreground">{device.assetTag}</td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{device.deviceName}</p>
-                        <p className="text-xs text-muted-foreground">{device.brand} {device.model}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{device.category}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{getDepartmentName(device.departmentId)}</td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{getLocationName(device.locationId)}</td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={device.status} />
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => window.location.href = `/inventory/${device.id}`}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {canEdit && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        )}
-                        {canDelete && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {/* Tabs for different views */}
+      <Tabs defaultValue="list" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="list">List View</TabsTrigger>
+          <TabsTrigger value="by-department">By Department</TabsTrigger>
+        </TabsList>
 
-          {filteredDevices.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-muted-foreground">No devices found matching your criteria</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* List View */}
+        <TabsContent value="list">
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-muted/50 border-b border-border">
+                    <tr>
+                      <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Asset Tag</th>
+                      <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Device</th>
+                      <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Category</th>
+                      <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Department</th>
+                      <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Location</th>
+                      <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Status</th>
+                      <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredDevices.map((device) => (
+                      <tr key={device.id} className="table-row-hover">
+                        <td className="px-6 py-4 text-sm font-mono text-foreground">{device.assetTag}</td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <p className="text-sm font-medium text-foreground">{device.deviceName}</p>
+                            <p className="text-xs text-muted-foreground">{device.brand} {device.model}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">{device.category}</td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">{getDepartmentName(device.departmentId)}</td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">{getLocationName(device.locationId)}</td>
+                        <td className="px-6 py-4">
+                          <StatusBadge status={device.status} />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setSelectedDevice(device)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            {canEdit && (
+                              <Link to={`/inventory/${device.id}`}>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </Link>
+                            )}
+                            {canDelete && (
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {filteredDevices.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">No devices found matching your criteria</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* By Department View */}
+        <TabsContent value="by-department">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {mockDepartments.map((dept) => {
+              const deptDevices = filteredDevices.filter(d => d.departmentId === dept.id);
+              const deptAllDevices = mockDevices.filter(d => d.departmentId === dept.id);
+              
+              return (
+                <Card key={dept.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg">{dept.name}</CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">{dept.block}</p>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">HOD: {dept.hodName}</p>
+                      <p className="text-xs text-muted-foreground">{dept.contactEmail}</p>
+                    </div>
+
+                    <div className="pt-3 border-t">
+                      <div className="text-2xl font-bold">{deptAllDevices.length}</div>
+                      <p className="text-xs text-muted-foreground">Total Devices</p>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 pt-3 border-t">
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-blue-600">
+                          {deptAllDevices.filter(d => d.status === 'INSTALLED').length}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Installed</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-yellow-600">
+                          {deptAllDevices.filter(d => d.status === 'IN_STOCK').length}
+                        </p>
+                        <p className="text-xs text-muted-foreground">In Stock</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-semibold text-orange-600">
+                          {deptAllDevices.filter(d => d.status === 'MAINTENANCE').length}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Maintenance</p>
+                      </div>
+                    </div>
+
+                    <Link to={`/departments/${dept.id}`}>
+                      <Button variant="outline" className="w-full mt-4">
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Device Details Dialog */}
       <Dialog open={!!selectedDevice} onOpenChange={() => setSelectedDevice(null)}>

@@ -75,10 +75,12 @@ export default function DepartmentDetails() {
           </div>
         </div>
         {canEdit && (
-          <Button variant="outline">
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Department
-          </Button>
+          <Link to={`/departments/${id}/edit`}>
+            <Button variant="outline">
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Department
+            </Button>
+          </Link>
         )}
       </div>
 
@@ -190,6 +192,54 @@ export default function DepartmentDetails() {
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-8">No devices assigned to this department</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Device Locations */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <MapPin className="h-5 w-5 text-primary" />
+                Devices by Location
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {departmentDevices.length > 0 ? (
+                <div className="space-y-4">
+                  {(() => {
+                    const devicesByLocation = departmentDevices.reduce((acc, device) => {
+                      const locId = device.locationId || 'unassigned';
+                      if (!acc[locId]) {
+                        acc[locId] = [];
+                      }
+                      acc[locId].push(device);
+                      return acc;
+                    }, {} as Record<string, typeof departmentDevices>);
+
+                    return Object.entries(devicesByLocation).map(([locId, devices]) => (
+                      <div key={locId} className="p-4 rounded-lg border border-border bg-muted/30">
+                        <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-primary" />
+                          {getLocationName(locId === 'unassigned' ? '' : locId)}
+                        </h4>
+                        <div className="space-y-2">
+                          {devices.map(device => (
+                            <div key={device.id} className="flex items-center justify-between p-2 rounded bg-background text-xs">
+                              <div>
+                                <p className="font-medium">{device.deviceName}</p>
+                                <p className="text-muted-foreground">{device.assetTag}</p>
+                              </div>
+                              <StatusBadge status={device.status} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-8">No device locations assigned</p>
               )}
             </CardContent>
           </Card>

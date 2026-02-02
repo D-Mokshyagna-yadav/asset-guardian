@@ -22,10 +22,12 @@ export default function Departments() {
           <p className="text-muted-foreground mt-1">Manage departments and their device allocations</p>
         </div>
         {canEdit && (
-          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-            <Plus className="h-4 w-4 mr-2" />
-            Add Department
-          </Button>
+          <Link to="/departments/new">
+            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Department
+            </Button>
+          </Link>
         )}
       </div>
 
