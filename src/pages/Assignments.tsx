@@ -1,8 +1,9 @@
+import { Link } from 'react-router-dom';
 import { mockAssignments, mockDevices, mockDepartments, mockLocations } from '@/data/mockData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Check, X } from 'lucide-react';
+import { Plus, Check, X, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Assignments() {
@@ -49,9 +50,7 @@ export default function Assignments() {
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Remarks</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Status</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Date</th>
-                  {canApprove && (
-                    <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Actions</th>
-                  )}
+                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -75,10 +74,15 @@ export default function Assignments() {
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {new Date(assignment.createdAt).toLocaleDateString()}
                     </td>
-                    {canApprove && (
-                      <td className="px-6 py-4">
-                        {assignment.status === 'PENDING' ? (
-                          <div className="flex items-center gap-2">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Link to={`/assignments/${assignment.id}`}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                        {canApprove && assignment.status === 'PENDING' && (
+                          <>
                             <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-8">
                               <Check className="h-4 w-4 mr-1" />
                               Approve
@@ -87,12 +91,10 @@ export default function Assignments() {
                               <X className="h-4 w-4 mr-1" />
                               Reject
                             </Button>
-                          </div>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">No actions</span>
+                          </>
                         )}
-                      </td>
-                    )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

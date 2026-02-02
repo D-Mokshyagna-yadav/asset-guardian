@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Search, Plus, Shield, UserCheck, UserX } from 'lucide-react';
+import { Search, Plus, Shield, UserCheck, UserX, Eye } from 'lucide-react';
 import { User, UserRole } from '@/types';
 
 const mockUsers: User[] = [
@@ -115,6 +116,11 @@ export default function Users() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
+                        <Link to={`/users/${user.id}`}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
                         <Button variant="outline" size="sm">
                           Edit
                         </Button>

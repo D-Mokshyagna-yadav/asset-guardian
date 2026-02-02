@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { mockAuditLogs } from '@/data/mockData';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Filter, FileText, Download } from 'lucide-react';
+import { Search, Filter, FileText, Download, Eye } from 'lucide-react';
 
 const actionTypes = ['All', 'CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE', 'APPROVED', 'REJECTED', 'ROLE_CHANGE'];
 const entityTypes = ['All', 'Device', 'User', 'Assignment', 'Department'];
@@ -144,23 +145,30 @@ export default function AuditLogs() {
                       )}
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-sm text-muted-foreground">
-                      {new Date(log.timestamp).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {new Date(log.timestamp).toLocaleTimeString('en-US', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1 font-mono">
-                      {log.ipAddress}
-                    </p>
+                  <div className="flex items-start gap-4">
+                    <div className="text-right shrink-0">
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(log.timestamp).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {new Date(log.timestamp).toLocaleTimeString('en-US', {
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 font-mono">
+                        {log.ipAddress}
+                      </p>
+                    </div>
+                    <Link to={`/audit-logs/${log.id}`}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </Link>
                   </div>
                 </div>
               </div>
