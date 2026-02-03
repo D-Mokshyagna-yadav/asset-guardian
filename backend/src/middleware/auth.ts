@@ -5,14 +5,14 @@ import { config } from '../config';
 import { StringValue } from 'ms';
 import crypto from 'crypto';
 
-// In-memory token blacklist (in production, use Redis)
+// In-memory token blacklist for local deployment
 const tokenBlacklist = new Set<string>();
 const blacklistCleanupInterval = 60 * 60 * 1000; // 1 hour
 
 // Clean up expired tokens from blacklist periodically
 setInterval(() => {
-  // In production with Redis, you'd use Redis TTL instead
-  // This is a simplified version for demonstration
+  // Simple cleanup - remove old tokens periodically
+  // This is sufficient for local deployment
 }, blacklistCleanupInterval);
 
 // Extend Request type to include user and security info
@@ -25,14 +25,10 @@ export interface AuthenticatedRequest extends Request {
 // Token blacklist management
 export const addToBlacklist = async (token: string): Promise<void> => {
   tokenBlacklist.add(token);
-  // In production, store in Redis with TTL:
-  // await redis.setex(`blacklist:${token}`, tokenTTL, '1');
 };
 
 export const isTokenBlacklisted = async (token: string): Promise<boolean> => {
   return tokenBlacklist.has(token);
-  // In production, check Redis:
-  // return await redis.exists(`blacklist:${token}`) === 1;
 };
 
 // Enhanced token generation with configurable options

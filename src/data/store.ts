@@ -82,7 +82,10 @@ export const addAssignment = (assignment: Assignment) => {
 
 export const getAssignedQuantity = (deviceId: string, assignments: Assignment[]) => {
   return assignments
-    .filter((assignment) => assignment.deviceId === deviceId && assignment.status !== 'REJECTED')
+    .filter((assignment) => 
+      assignment.deviceId === deviceId && 
+      (assignment.status === 'APPROVED' || assignment.status === 'COMPLETED')
+    )
     .reduce((sum, assignment) => sum + (assignment.quantity ?? 1), 0);
 };
 

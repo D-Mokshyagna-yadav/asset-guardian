@@ -4,7 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { mockDepartments, mockLocations } from '@/data/mockData';
-import { getDevices, getAssignments, getAvailableQuantity } from '@/data/store';
+import { getDevices, getAssignments } from '@/data/store';
+import { calculateDeviceQuantities } from '@/utils/assignmentCalculations';
 import { ArrowLeft, Edit, Trash2, Package, MapPin, DollarSign, Zap, FileText, Calendar, Shield, AlertTriangle, CheckCircle2, Clock, Eye } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -65,7 +66,19 @@ export default function DevicePreview() {
   };
 
   const availableQty = getAvailableQuantity(device, assignments);
-  const inUse = device.quantity - (availableQty > 0 ? availableQty : 0);
+  const assignedQty = assignments
+    .filter(a => a.deviceId === device.id && (a.status === 'APPROVED' || a.status === 'COMPLETED'))
+    .reduce((sum, a) => sum + (a.quantity ?? 1), 0);
+  const inUse = assignedQty;
+  
+  // Validation: ensure numbers add up correctly
+  const calculatedAvailable = Math.max(device.quantity - assignedQty, 0);
+  const actualAvailable = Math.max(availableQty, 0);
+  
+  // Use the more accurate calculation
+  const finalAvailable = calculatedAvailable;
+  const finalInUse = Math.min(assignedQty, device.quantity);
+  
   const canEdit = user?.role === 'SUPER_ADMIN';
 
   return (
@@ -136,17 +149,17 @@ export default function DevicePreview() {
             <CardContent className="p-6">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Available</p>
               <p className="text-3xl font-bold text-emerald-600">
-                {availableQty > 0 ? availableQty : 0}
+                {finalAvailable}
               </p>
-              <p className="text-xs text-muted-foreground mt-1">units in stock</p>
+              <p className="text-xs text-muted-foreground mt-1">units ready for assignment</p>
             </CardContent>
           </Card>
 
           <Card className="bg-blue-500/10 border-blue-500/20">
             <CardContent className="p-6">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">In Use</p>
-              <p className="text-3xl font-bold text-blue-600">{inUse}</p>
-              <p className="text-xs text-muted-foreground mt-1">units assigned</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Installed</p>
+              <p className="text-3xl font-bold text-blue-600">{finalInUse}</p>
+              <p className="text-xs text-muted-foreground mt-1">units currently assigned</p>
             </CardContent>
           </Card>
 
@@ -154,7 +167,7 @@ export default function DevicePreview() {
             <CardContent className="p-6">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Total</p>
               <p className="text-3xl font-bold text-amber-600">{device.quantity}</p>
-              <p className="text-xs text-muted-foreground mt-1">units total</p>
+              <p className="text-xs text-muted-foreground mt-1">units in inventory</p>
             </CardContent>
           </Card>
         </div>

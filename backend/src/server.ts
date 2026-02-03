@@ -13,6 +13,7 @@ import { globalErrorHandler, notFound } from './middleware/errorHandler';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import deviceRoutes from './routes/devices';
+import departmentRoutes from './routes/departments';
 
 const app = express();
 
@@ -89,6 +90,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/devices', deviceRoutes);
+app.use('/api/departments', departmentRoutes);
 
 // 404 handler
 app.use(notFound);
