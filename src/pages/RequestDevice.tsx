@@ -9,7 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { mockDepartments, mockLocations } from '@/data/mockData';
+import { departmentsApi, locationsApi } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { Department, Location } from '@/types';
 import { Assignment, RequestReason } from '@/types';
 import { getAssignments, getDevices, getAvailableQuantity, saveAssignments } from '@/data/store';
 import { useAuth } from '@/contexts/AuthContext';
@@ -299,12 +301,12 @@ export default function RequestDevice() {
                         <SelectValue placeholder="Select reason" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="INSTALLATION">📦 Installation - New device installation</SelectItem>
-                        <SelectItem value="MAINTENANCE">🔧 Maintenance - Device maintenance required</SelectItem>
-                        <SelectItem value="REPLACEMENT_MALFUNCTION">🔄 Replacement - Device malfunction/repair</SelectItem>
-                        <SelectItem value="UPGRADE">⬆️ Upgrade - System/component upgrade</SelectItem>
-                        <SelectItem value="NEW_REQUIREMENT">✨ New Requirement - New departmental need</SelectItem>
-                        <SelectItem value="OTHER">❓ Other - Please specify in notes</SelectItem>
+                        <SelectItem value="INSTALLATION">Installation - New device installation</SelectItem>
+                        <SelectItem value="MAINTENANCE">Maintenance - Device maintenance required</SelectItem>
+                        <SelectItem value="REPLACEMENT_MALFUNCTION">Replacement - Device malfunction/repair</SelectItem>
+                        <SelectItem value="UPGRADE">Upgrade - System/component upgrade</SelectItem>
+                        <SelectItem value="NEW_REQUIREMENT">New Requirement - New departmental need</SelectItem>
+                        <SelectItem value="OTHER">Other - Please specify in notes</SelectItem>
                       </SelectContent>
                     </Select>
                     {errors.reason && (

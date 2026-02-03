@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
-import { mockDepartments, mockDevices } from '@/data/mockData';
+import { departmentsApi, devicesApi } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { Department, Device } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Building2, Plus, Users, Monitor, Mail } from 'lucide-react';

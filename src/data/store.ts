@@ -1,4 +1,3 @@
-import { mockAssignments, mockDevices } from '@/data/mockData';
 import { Assignment, Device } from '@/types';
 
 const DEVICES_KEY = 'asset-guardian-devices';
@@ -23,21 +22,14 @@ const normalizeAssignments = (assignments: Assignment[]): Assignment[] =>
     quantity: assignment.quantity ?? 1,
   }));
 
-const seedIfMissing = (key: string, value: unknown) => {
-  if (!isBrowser) return;
-  if (window.localStorage.getItem(key)) return;
-  window.localStorage.setItem(key, JSON.stringify(value));
-};
-
 export const getDevices = (): Device[] => {
-  if (!isBrowser) return mockDevices;
-  seedIfMissing(DEVICES_KEY, mockDevices);
+  if (!isBrowser) return [];
   const raw = window.localStorage.getItem(DEVICES_KEY);
-  if (!raw) return mockDevices;
+  if (!raw) return [];
   try {
     return JSON.parse(raw) as Device[];
   } catch {
-    return mockDevices;
+    return [];
   }
 };
 
@@ -57,15 +49,14 @@ export const upsertDevice = (device: Device) => {
 };
 
 export const getAssignments = (): Assignment[] => {
-  if (!isBrowser) return normalizeAssignments(mockAssignments);
-  seedIfMissing(ASSIGNMENTS_KEY, normalizeAssignments(mockAssignments));
+  if (!isBrowser) return [];
   const raw = window.localStorage.getItem(ASSIGNMENTS_KEY);
-  if (!raw) return normalizeAssignments(mockAssignments);
+  if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as Assignment[];
     return normalizeAssignments(parsed);
   } catch {
-    return normalizeAssignments(mockAssignments);
+    return [];
   }
 };
 
@@ -112,7 +103,6 @@ const defaultCategories = [
 
 export const getCategories = (): string[] => {
   if (!isBrowser) return defaultCategories;
-  seedIfMissing(CATEGORIES_KEY, defaultCategories);
   const raw = window.localStorage.getItem(CATEGORIES_KEY);
   if (!raw) return defaultCategories;
   try {

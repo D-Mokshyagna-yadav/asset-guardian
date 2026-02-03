@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { mockUsers, mockDepartments, mockLocations } from '@/data/mockData';
+import { departmentsApi, locationsApi, usersApi } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { User, Department, Location } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,11 +24,13 @@ import { Label } from '@/components/ui/label';
 import { AlertCircle, Check, X, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 import { Assignment, AssignmentStatus, Device, Department, Location, User } from '@/types';
 import { getAssignments, getDevices, saveAssignments, upsertDevice } from '@/data/store';
 
 export default function AssignmentManagement() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [assignments, setAssignments] = useState(getAssignments());
   const devices = getDevices();
   const [filterStatus, setFilterStatus] = useState<string>('all');
@@ -37,6 +41,11 @@ export default function AssignmentManagement() {
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
 
   const canApprove = user?.role === 'SUPER_ADMIN';
+
+  // Debug logging
+  if (!canApprove) {
+    console.warn('User cannot approve - role:', user?.role, 'user:', user);
+  }
 
   const filteredAssignments = filterStatus === 'all'
     ? assignments
@@ -68,25 +77,37 @@ export default function AssignmentManagement() {
   const handleApprove = () => {
     if (!selectedAssignment) return;
 
+    const updatedAssignment = {
+      ...selectedAssignment,
+      status: 'APPROVED' as AssignmentStatus,
+      approvedBy: user?.id,
+    };
+
     const updatedAssignments = assignments.map(a => {
       if (a.id === selectedAssignment.id) {
-        return {
-          ...a,
-          status: 'APPROVED' as AssignmentStatus,
-          approvedBy: user?.id,
-        };
+        return updatedAssignment;
       }
       return a;
     });
 
     // Update the device with department and location info
     const currentDevices = getDevices();
-    const deviceToUpdate = currentDevices.find(d => d.id === selectedAssignment.deviceId);
+    const deviceIdString = typeof selectedAssignment.deviceId === 'object' 
+      ? selectedAssignment.deviceId.id 
+      : selectedAssignment.deviceId;
+    const deviceToUpdate = currentDevices.find(d => d.id === deviceIdString);
     if (deviceToUpdate) {
+      const departmentIdString = typeof selectedAssignment.departmentId === 'object' 
+        ? selectedAssignment.departmentId.id 
+        : selectedAssignment.departmentId;
+      const locationIdString = typeof selectedAssignment.locationId === 'object' 
+        ? selectedAssignment.locationId.id 
+        : selectedAssignment.locationId;
+      
       const updatedDevice = {
         ...deviceToUpdate,
-        departmentId: selectedAssignment.departmentId,
-        locationId: selectedAssignment.locationId,
+        departmentId: departmentIdString,
+        locationId: locationIdString,
         updatedAt: new Date().toISOString().split('T')[0],
       };
       upsertDevice(updatedDevice);
@@ -94,6 +115,16 @@ export default function AssignmentManagement() {
 
     setAssignments(updatedAssignments);
     saveAssignments(updatedAssignments);
+    
+    // Show success notification
+    toast({
+      title: 'Success',
+      description: 'Assignment approved successfully',
+      duration: 3000,
+    });
+    
+    // Close dialogs and reset state
+    setViewDetailsDialog(false);
     setApprovalDialog(false);
     setSelectedAssignment(null);
     setActionType(null);
@@ -103,20 +134,32 @@ export default function AssignmentManagement() {
   const handleReject = () => {
     if (!selectedAssignment) return;
 
+    const updatedAssignment = {
+      ...selectedAssignment,
+      status: 'REJECTED' as AssignmentStatus,
+      remarks: rejectionReason || 'Request rejected',
+      approvedBy: user?.id,
+    };
+
     const updatedAssignments = assignments.map(a => {
       if (a.id === selectedAssignment.id) {
-        return {
-          ...a,
-          status: 'REJECTED' as AssignmentStatus,
-          remarks: rejectionReason || 'Request rejected',
-          approvedBy: user?.id,
-        };
+        return updatedAssignment;
       }
       return a;
     });
 
     setAssignments(updatedAssignments);
     saveAssignments(updatedAssignments);
+    
+    // Show success notification
+    toast({
+      title: 'Success',
+      description: 'Assignment rejected successfully',
+      duration: 3000,
+    });
+    
+    // Close dialogs and reset state
+    setViewDetailsDialog(false);
     setApprovalDialog(false);
     setSelectedAssignment(null);
     setActionType(null);
@@ -396,11 +439,24 @@ export default function AssignmentManagement() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setApprovalDialog(false)}>
+            <Button variant="outline" onClick={() => {
+              setApprovalDialog(false);
+              setRejectionReason('');
+            }}>
               Cancel
             </Button>
             <Button
-              onClick={actionType === 'approve' ? handleApprove : handleReject}
+              onClick={() => {
+                if (actionType === 'reject' && !rejectionReason.trim()) {
+                  return;
+                }
+                if (actionType === 'approve') {
+                  handleApprove();
+                } else {
+                  handleReject();
+                }
+              }}
+              disabled={actionType === 'reject' && !rejectionReason.trim()}
               className={actionType === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-destructive hover:bg-destructive/90'}
             >
               {actionType === 'approve' ? (

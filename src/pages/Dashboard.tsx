@@ -1,5 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
-import { getDeviceStats, mockDevices, mockAuditLogs, mockAssignments } from '@/data/mockData';
+import { devicesApi, auditLogsApi, assignmentsApi } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { Device, AuditLog, Assignment } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import {
   Monitor,

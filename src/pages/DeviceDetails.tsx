@@ -1,5 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { mockDepartments, mockLocations, mockAuditLogs } from '@/data/mockData';
+import { departmentsApi, locationsApi, auditLogsApi } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { Department, Location, AuditLog } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

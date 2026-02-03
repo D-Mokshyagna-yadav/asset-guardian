@@ -1,6 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { mockDepartments, mockLocations } from '@/data/mockData';
+import { departmentsApi, locationsApi } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { Department, Location } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';

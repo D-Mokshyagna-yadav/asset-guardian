@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { mockUsers } from '@/data/mockData';
+import { usersApi } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { User } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';

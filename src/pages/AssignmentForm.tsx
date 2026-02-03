@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { mockDepartments, mockLocations, mockUsers } from '@/data/mockData';
+import { departmentsApi, locationsApi, usersApi } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { Department, Location, User } from '@/types';
 import { Assignment, RequestReason } from '@/types';
 import {
   getAssignments,

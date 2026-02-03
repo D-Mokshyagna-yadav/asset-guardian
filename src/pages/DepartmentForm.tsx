@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { mockDepartments } from '@/data/mockData';
+import { departmentsApi } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { Department } from '@/types';
 import { Department } from '@/types';
 
 export default function DepartmentForm() {

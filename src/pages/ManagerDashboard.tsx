@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { mockDevices, mockAssignments, mockUsers } from '@/data/mockData';
+import { devicesApi, assignmentsApi, usersApi } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { Device, Assignment, User } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { BarChart3, Package, AlertCircle, Clock, CheckCircle, Users } from 'lucide-react';

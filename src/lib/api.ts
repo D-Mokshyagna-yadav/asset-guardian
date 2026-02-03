@@ -1,7 +1,8 @@
 import axios, { AxiosResponse, AxiosError, AxiosRequestConfig } from 'axios';
-import { User, Device } from '../types';
+import { User, Device, Department, Location, Assignment, AuditLog } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
 
 // Create axios instance
 const api = axios.create({
@@ -94,15 +95,18 @@ export interface PaginatedResponse<T> {
 
 // Auth API
 export const authApi = {
-  login: (email: string, password: string) =>
-    api.post<ApiResponse<{ user: User; accessToken: string; refreshToken: string }>>('/auth/login', {
+  login: async (email: string, password: string) => {
+    return api.post<ApiResponse<{ user: User; accessToken: string; refreshToken: string }>>('/auth/login', {
       email,
       password,
-    }),
+    });
+  },
   
   logout: () => api.post<ApiResponse>('/auth/logout'),
   
-  getProfile: () => api.get<ApiResponse<{ user: User }>>('/auth/profile'),
+  getProfile: () => {
+    return api.get<ApiResponse<{ user: User }>>('/auth/profile');
+  },
   
   updateProfile: (data: Partial<User>) => api.patch<ApiResponse<{ user: User }>>('/auth/profile', data),
   
@@ -165,6 +169,105 @@ export const devicesApi = {
   
   getAvailableQuantity: (id: string) =>
     api.get<ApiResponse<{ total: number; assigned: number; available: number }>>(`/devices/${id}/availability`),
+};
+
+// Departments API
+export const departmentsApi = {
+  getDepartments: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }) => api.get<PaginatedResponse<Department>>('/departments', { params }),
+  
+  getDepartmentById: (id: string) => api.get<ApiResponse<{ department: Department }>>(`/departments/${id}`),
+  
+  createDepartment: (data: Omit<Department, 'id' | 'createdAt' | 'updatedAt'>) => 
+    api.post<ApiResponse<{ department: Department }>>('/departments', data),
+  
+  updateDepartment: (id: string, data: Partial<Department>) =>
+    api.patch<ApiResponse<{ department: Department }>>(`/departments/${id}`, data),
+  
+  deleteDepartment: (id: string) => api.delete<ApiResponse>(`/departments/${id}`),
+};
+
+// Locations API
+export const locationsApi = {
+  getLocations: (params?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    building?: string;
+  }) => api.get<PaginatedResponse<Location>>('/locations', { params }),
+  
+  getLocationById: (id: string) => api.get<ApiResponse<{ location: Location }>>(`/locations/${id}`),
+  
+  createLocation: (data: Omit<Location, 'id' | 'createdAt' | 'updatedAt'>) => 
+    api.post<ApiResponse<{ location: Location }>>('/locations', data),
+  
+  updateLocation: (id: string, data: Partial<Location>) =>
+    api.patch<ApiResponse<{ location: Location }>>(`/locations/${id}`, data),
+  
+  deleteLocation: (id: string) => api.delete<ApiResponse>(`/locations/${id}`),
+  
+  getBuildings: () => api.get<ApiResponse<{ buildings: string[] }>>('/locations/buildings/list'),
+  
+  getLocationsByBuilding: (building: string) => 
+    api.get<PaginatedResponse<Location>>(`/locations/building/${building}`),
+};
+
+// Assignments API
+export const assignmentsApi = {
+  getAssignments: (params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    deviceId?: string;
+    departmentId?: string;
+  }) => api.get<PaginatedResponse<Assignment>>('/assignments', { params }),
+  
+  getAssignmentById: (id: string) => api.get<ApiResponse<{ assignment: Assignment }>>(`/assignments/${id}`),
+  
+  createAssignment: (data: Omit<Assignment, 'id' | 'createdAt' | 'updatedAt'>) => 
+    api.post<ApiResponse<{ assignment: Assignment }>>('/assignments', data),
+  
+  updateAssignment: (id: string, data: Partial<Assignment>) =>
+    api.patch<ApiResponse<{ assignment: Assignment }>>(`/assignments/${id}`, data),
+  
+  approveAssignment: (id: string, data: { locationId?: string; departmentId?: string }) =>
+    api.post<ApiResponse<{ assignment: Assignment }>>(`/assignments/${id}/approve`, data),
+  
+  rejectAssignment: (id: string, data: { rejectionReason: string }) =>
+    api.post<ApiResponse<{ assignment: Assignment }>>(`/assignments/${id}/reject`, data),
+  
+  completeAssignment: (id: string) =>
+    api.post<ApiResponse<{ assignment: Assignment }>>(`/assignments/${id}/complete`),
+  
+  deleteAssignment: (id: string) => api.delete<ApiResponse>(`/assignments/${id}`),
+};
+
+// Audit Logs API
+export const auditLogsApi = {
+  getAuditLogs: (params?: {
+    page?: number;
+    limit?: number;
+    entityType?: string;
+    entityId?: string;
+    action?: string;
+    startDate?: string;
+    endDate?: string;
+  }) => api.get<PaginatedResponse<AuditLog>>('/audit-logs', { params }),
+  
+  getAuditLogById: (id: string) => api.get<ApiResponse<{ log: AuditLog }>>(`/audit-logs/${id}`),
+  
+  getEntityAuditLogs: (entityType: string, entityId: string, params?: {
+    page?: number;
+    limit?: number;
+  }) => api.get<PaginatedResponse<AuditLog>>(`/audit-logs/${entityType}/${entityId}`, { params }),
+  
+  deleteAuditLog: (id: string) => api.delete<ApiResponse>(`/audit-logs/${id}`),
+  
+  deleteOldLogs: (daysOld: number) => 
+    api.post<ApiResponse>('/audit-logs/cleanup/old-logs', { daysOld }),
 };
 
 export default api;

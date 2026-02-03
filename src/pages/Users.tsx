@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,14 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Search, Plus, Shield, UserCheck, UserX, Eye } from 'lucide-react';
 import { User, UserRole } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
-
-const mockUsers: User[] = [
-  { id: '1', name: 'John Administrator', email: 'admin@college.edu', role: 'SUPER_ADMIN', isActive: true, createdAt: '2024-01-01' },
-  { id: '2', name: 'Sarah Tech', email: 'staff@college.edu', role: 'IT_STAFF', isActive: true, createdAt: '2024-01-15' },
-  { id: '3', name: 'Dr. Michael Dean', email: 'hod@college.edu', role: 'DEPARTMENT_INCHARGE', departmentId: 'dept-1', isActive: true, createdAt: '2024-02-01' },
-  { id: '4', name: 'Alex Johnson', email: 'alex@college.edu', role: 'IT_STAFF', isActive: true, createdAt: '2024-03-01' },
-  { id: '5', name: 'Maria Garcia', email: 'maria@college.edu', role: 'DEPARTMENT_INCHARGE', departmentId: 'dept-2', isActive: false, createdAt: '2024-02-15' },
-];
+import { usersApi } from '@/lib/api';
 
 const getRoleBadgeStyle = (role: UserRole) => {
   switch (role) {
@@ -31,6 +24,24 @@ const getRoleBadgeStyle = (role: UserRole) => {
 export default function Users() {
   const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        const response = await usersApi.getUsers({ limit: 100 });
+        setUsers(response.data.data);
+      } catch (error) {
+        console.error('Failed to load users:', error);
+        setUsers([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUsers();
+  }, []);
 
   // Role-based access control
   const isAdmin = user?.role === 'SUPER_ADMIN';
@@ -39,14 +50,10 @@ export default function Users() {
   const canDeleteUser = isAdmin;
   const canViewUsers = isAdmin || user?.role === 'IT_STAFF';
 
-  // Check for single admin restriction
-  const existingAdmins = mockUsers.filter(u => u.role === 'SUPER_ADMIN');
-  const hasMaxAdmins = existingAdmins.length >= 1;
-
-  const filteredUsers = mockUsers.filter(
-    (user) =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredUsers = users.filter(
+    (u) =>
+      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -67,6 +74,7 @@ export default function Users() {
             </Button>
           </Link>
         )}
+      </div>
       </div>
 
       {/* Search */}

@@ -1,5 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { mockDepartments, mockAuditLogs, mockDevices } from '@/data/mockData';
+import { departmentsApi, auditLogsApi, devicesApi, usersApi } from '@/lib/api';
+import { useState, useEffect } from 'react';
+import { Department, AuditLog, Device, User, UserRole } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -16,17 +18,7 @@ import {
   Eye,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { User, UserRole } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-
-// Mock users data (same as in Users.tsx)
-const mockUsers: User[] = [
-  { id: '1', name: 'John Administrator', email: 'admin@college.edu', role: 'SUPER_ADMIN', isActive: true, createdAt: '2024-01-01' },
-  { id: '2', name: 'Sarah Tech', email: 'staff@college.edu', role: 'IT_STAFF', isActive: true, createdAt: '2024-01-15' },
-  { id: '3', name: 'Dr. Michael Dean', email: 'hod@college.edu', role: 'DEPARTMENT_INCHARGE', departmentId: 'dept-1', isActive: true, createdAt: '2024-02-01' },
-  { id: '4', name: 'Alex Johnson', email: 'alex@college.edu', role: 'IT_STAFF', isActive: true, createdAt: '2024-03-01' },
-  { id: '5', name: 'Maria Garcia', email: 'maria@college.edu', role: 'DEPARTMENT_INCHARGE', departmentId: 'dept-2', isActive: false, createdAt: '2024-02-15' },
-];
 
 const getRoleBadgeStyle = (role: UserRole) => {
   switch (role) {
@@ -46,16 +38,59 @@ export default function UserDetails() {
   const navigate = useNavigate();
   const { user: currentUser } = useAuth();
   
-  const userProfile = mockUsers.find(u => u.id === id);
-  const department = mockDepartments.find(d => d.id === userProfile?.departmentId);
-  const userLogs = mockAuditLogs.filter(log => log.performedBy === userProfile?.name);
-  const assignedDevices = mockDevices.filter(d => d.inchargeUserId === id);
+  const [userProfile, setUserProfile] = useState<User | null>(null);
+  const [department, setDepartment] = useState<Department | null>(null);
+  const [userLogs, setUserLogs] = useState<AuditLog[]>([]);
+  const [assignedDevices, setAssignedDevices] = useState<Device[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!userProfile) {
+  useEffect(() => {
+    const loadUserDetails = async () => {
+      try {
+        if (!id) return;
+        
+        // Load user profile
+        const userResponse = await usersApi.getUserById(id);
+        const loadedUser = userResponse.data.data?.user;
+        setUserProfile(loadedUser);
+        
+        // Load department if user has one
+        if (loadedUser?.departmentId) {
+          const deptResponse = await departmentsApi.getDepartmentById(loadedUser.departmentId);
+          setDepartment(deptResponse.data.data?.department || null);
+        }
+        
+        // Load audit logs for this user
+        try {
+          const logsResponse = await auditLogsApi.getAuditLogs({ entityType: 'User', entityId: id });
+          setUserLogs(logsResponse.data.data);
+        } catch {
+          setUserLogs([]);
+        }
+        
+        // Load assigned devices
+        try {
+          const devicesResponse = await devicesApi.getDevices({ limit: 100 });
+          const assigned = devicesResponse.data.data.filter(d => d.inchargeUserId === id);
+          setAssignedDevices(assigned);
+        } catch {
+          setAssignedDevices([]);
+        }
+      } catch (error) {
+        console.error('Failed to load user details:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserDetails();
+  }, [id]);
+
+  if (loading) {
     return (
       <div className="p-6 lg:p-8 animate-fade-in">
         <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">User not found</p>
+          <p className="text-muted-foreground">Loading user details...</p>
           <Button variant="outline" onClick={() => navigate('/users')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Users

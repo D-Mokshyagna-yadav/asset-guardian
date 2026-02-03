@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Server, AlertCircle } from 'lucide-react';
+import { Server, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { mockUsers } from '@/data/mockData';
 
 export default function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('john@college.edu');
+  const [password, setPassword] = useState('password');
   const [error, setError] = useState('');
+  const [showCredentials, setShowCredentials] = useState(true);
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
 
@@ -85,6 +87,47 @@ export default function Login() {
                   <Button type="submit" disabled={isLoading} className="w-full">
                     {isLoading ? 'Signing in...' : 'Sign in'}
                   </Button>
+
+                  <div className="mt-4 border border-blue-200 rounded-lg overflow-hidden bg-blue-50">
+                    <button
+                      type="button"
+                      onClick={() => setShowCredentials(!showCredentials)}
+                      className="w-full px-4 py-3 flex items-center justify-between hover:bg-blue-100 transition-colors"
+                    >
+                      <span className="text-sm font-semibold text-blue-900">Mock User Credentials</span>
+                      {showCredentials ? (
+                        <ChevronUp className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-blue-600" />
+                      )}
+                    </button>
+
+                    {showCredentials && (
+                      <div className="px-4 py-3 space-y-2 border-t border-blue-200">
+                        {[].map((user) => (
+                          <div
+                            key={user.id}
+                            className="text-xs bg-white rounded p-2 cursor-pointer hover:bg-blue-100 transition-colors"
+                            onClick={() => {
+                              setEmail(user.email);
+                              setPassword('password');
+                            }}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="font-semibold text-blue-900">{user.name}</span>
+                              <span className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-blue-200 text-blue-800">
+                                {user.role === 'SUPER_ADMIN' ? 'Admin' : user.role === 'IT_STAFF' ? 'IT Staff' : 'Department'}
+                              </span>
+                            </div>
+                            <div className="text-blue-700">
+                              <div>Email: <span className="font-mono text-blue-900">{user.email}</span></div>
+                              <div>Password: <span className="font-mono text-blue-900">password</span></div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </form>
               </CardContent>
             </Card>
