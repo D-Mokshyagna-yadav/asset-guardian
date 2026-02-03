@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import cookieParser from 'cookie-parser';
 import { config } from './config';
 import connectDB from './database';
 import { globalErrorHandler, notFound } from './middleware/errorHandler';
@@ -48,6 +49,9 @@ app.use('/api/', limiter);
 // Compression
 app.use(compression());
 
+// Cookie parsing
+app.use(cookieParser());
+
 // Logging
 if (config.nodeEnv === 'development') {
   app.use(morgan('dev'));
@@ -55,9 +59,21 @@ if (config.nodeEnv === 'development') {
   app.use(morgan('combined'));
 }
 
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing with enhanced security
+app.use(express.json({ 
+  limit: '10mb',
+  verify: (req, res, buf) => {
+    // Basic JSON bomb protection
+    if (buf.length > 10 * 1024 * 1024) { // 10MB
+      throw new Error('Request entity too large');
+    }
+  }
+}));
+app.use(express.urlencoded({ 
+  extended: true, 
+  limit: '10mb',
+  parameterLimit: 100 // Limit number of parameters
+}));
 
 // Health check
 app.get('/api/health', (req, res) => {
