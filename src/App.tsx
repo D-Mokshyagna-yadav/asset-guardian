@@ -80,7 +80,7 @@ const App = () => (
               <Route
                 path="/departments"
                 element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE']}>
                     <Departments />
                   </ProtectedRoute>
                 }
@@ -96,7 +96,7 @@ const App = () => (
               <Route
                 path="/departments/:id"
                 element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE']}>
                     <DepartmentDetails />
                   </ProtectedRoute>
                 }
@@ -112,7 +112,7 @@ const App = () => (
               <Route
                 path="/assignments"
                 element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE']}>
                     <Assignments />
                   </ProtectedRoute>
                 }
@@ -120,7 +120,7 @@ const App = () => (
               <Route
                 path="/assignment-management"
                 element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                     <AssignmentManagement />
                   </ProtectedRoute>
                 }
@@ -136,7 +136,7 @@ const App = () => (
               <Route
                 path="/request-device"
                 element={
-                  <ProtectedRoute allowedRoles={['IT_STAFF']}>
+                  <ProtectedRoute allowedRoles={['IT_STAFF', 'DEPARTMENT_INCHARGE']}>
                     <RequestDevice />
                   </ProtectedRoute>
                 }
@@ -152,7 +152,7 @@ const App = () => (
               <Route
                 path="/assignments/:id"
                 element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE']}>
                     <AssignmentDetails />
                   </ProtectedRoute>
                 }

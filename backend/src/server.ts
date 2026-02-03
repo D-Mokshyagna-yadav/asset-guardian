@@ -14,6 +14,9 @@ import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import deviceRoutes from './routes/devices';
 import departmentRoutes from './routes/departments';
+import assignmentRoutes from './routes/assignments';
+import auditLogRoutes from './routes/auditLogs';
+import locationRoutes from './routes/locations';
 
 const app = express();
 
@@ -91,6 +94,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/departments', departmentRoutes);
+app.use('/api/assignments', assignmentRoutes);
+app.use('/api/audit-logs', auditLogRoutes);
+app.use('/api/locations', locationRoutes);
 
 // 404 handler
 app.use(notFound);

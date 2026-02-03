@@ -33,6 +33,12 @@ export default function RequestDevice() {
   const devices = getDevices();
   const assignments = getAssignments();
 
+  // DEPARTMENT_INCHARGE can only request for their own department
+  const isDeptIncharge = user?.role === 'DEPARTMENT_INCHARGE';
+  const availableDepartments = isDeptIncharge
+    ? mockDepartments.filter(d => d.id === user?.departmentId)
+    : mockDepartments;
+
   const [formData, setFormData] = useState({
     deviceId: '',
     departmentId: user?.departmentId || '',
@@ -171,6 +177,14 @@ export default function RequestDevice() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {isDeptIncharge && (
+              <Alert className="mb-6 border-blue-200 bg-blue-50">
+                <AlertCircle className="h-4 w-4 text-blue-600" />
+                <AlertDescription className="text-blue-800">
+                  As a Department In-charge, you can only request devices for <strong>{user?.departmentId ? mockDepartments.find(d => d.id === user.departmentId)?.name : 'your department'}</strong>. For requests from other departments, contact IT staff.
+                </AlertDescription>
+              </Alert>
+            )}
             {errors.submit && (
               <Alert variant="destructive" className="mb-6">
                 <AlertCircle className="h-4 w-4" />
@@ -242,12 +256,12 @@ export default function RequestDevice() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="departmentId">Department *</Label>
-                    <Select value={formData.departmentId} onValueChange={(value) => handleSelectChange('departmentId', value)}>
+                    <Select value={formData.departmentId} onValueChange={(value) => handleSelectChange('departmentId', value)} disabled={isDeptIncharge}>
                       <SelectTrigger className={errors.departmentId ? 'border-red-500' : ''}>
                         <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
-                        {mockDepartments.map(dept => (
+                        {availableDepartments.map(dept => (
                           <SelectItem key={dept.id} value={dept.id}>
                             {dept.name} ({dept.block})
                           </SelectItem>

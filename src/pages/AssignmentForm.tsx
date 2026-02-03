@@ -16,16 +16,22 @@ import {
   getAvailableQuantity,
   getDevices,
   saveAssignments,
+  upsertDevice,
 } from '@/data/store';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function AssignmentForm() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { user } = useAuth();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
   const devices = getDevices();
   const [assignments, setAssignments] = useState(getAssignments());
+
+  // SUPER_ADMIN creates assignments as APPROVED, others create as REQUESTED
+  const isAdmin = user?.role === 'SUPER_ADMIN';
 
   // Find existing assignment if editing
   const existingAssignment = id ? assignments.find(a => a.id === id) : null;
@@ -87,8 +93,8 @@ export default function AssignmentForm() {
         quantity: parseInt(formData.quantity.toString()),
         reason: formData.reason as RequestReason,
         notes: formData.notes || undefined,
-        approvedBy: existingAssignment?.approvedBy,
-        status: existingAssignment?.status || 'PENDING',
+        approvedBy: existingAssignment?.approvedBy || (isAdmin ? user?.id : undefined),
+        status: existingAssignment?.status || (isAdmin ? 'APPROVED' : 'REQUESTED'),
         remarks: formData.remarks || undefined,
         createdAt: existingAssignment?.createdAt || new Date().toISOString(),
       };
@@ -98,8 +104,25 @@ export default function AssignmentForm() {
       const nextAssignments = existingAssignment
         ? assignments.map(a => (a.id === newAssignment.id ? newAssignment : a))
         : [...assignments, newAssignment];
+      
       saveAssignments(nextAssignments);
       setAssignments(nextAssignments);
+
+      // If SUPER_ADMIN created assignment as APPROVED, update device immediately
+      if (isAdmin && !existingAssignment) {
+        const currentDevices = getDevices();
+        const deviceToUpdate = currentDevices.find(d => d.id === formData.deviceId);
+        if (deviceToUpdate) {
+          const updatedDevice = {
+            ...deviceToUpdate,
+            departmentId: formData.departmentId,
+            locationId: formData.locationId,
+            updatedAt: new Date().toISOString().split('T')[0],
+          };
+          upsertDevice(updatedDevice);
+        }
+      }
+      
       navigate('/assignments');
     } catch (error) {
       setErrors({ submit: 'Failed to save assignment. Please try again.' });

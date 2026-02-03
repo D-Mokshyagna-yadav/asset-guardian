@@ -19,10 +19,10 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, Check, X, Eye, MessageSquare, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, Check, X, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
-import { Assignment, AssignmentStatus } from '@/types';
+import { Assignment, AssignmentStatus, Device, Department, Location, User } from '@/types';
 import { getAssignments, getDevices, saveAssignments, upsertDevice } from '@/data/store';
 
 export default function AssignmentManagement() {
@@ -31,6 +31,7 @@ export default function AssignmentManagement() {
   const devices = getDevices();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [viewDetailsDialog, setViewDetailsDialog] = useState(false);
   const [approvalDialog, setApprovalDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
@@ -41,20 +42,26 @@ export default function AssignmentManagement() {
     ? assignments
     : assignments.filter(a => a.status === filterStatus);
 
-  const getDeviceName = (id: string) => {
+  const getDeviceName = (id: string | Device) => {
+    if (typeof id === 'object') return id?.deviceName || 'Unknown';
     return devices.find(d => d.id === id)?.deviceName || 'Unknown';
   };
 
-  const getDepartmentName = (id: string) => {
+  const getDepartmentName = (id: string | Department) => {
+    if (typeof id === 'object') return id?.name || 'Unknown';
     return mockDepartments.find(d => d.id === id)?.name || 'Unknown';
   };
 
-  const getLocationName = (id: string) => {
+  const getLocationName = (id: string | Location) => {
+    if (typeof id === 'object') {
+      return id ? `${id.building}, ${id.room}` : 'Unknown';
+    }
     const loc = mockLocations.find(l => l.id === id);
     return loc ? `${loc.building}, ${loc.room}` : 'Unknown';
   };
 
-  const getRequestedByName = (id: string) => {
+  const getRequestedByName = (id: string | User) => {
+    if (typeof id === 'object') return id?.name || 'Unknown';
     return mockUsers.find(u => u.id === id)?.name || 'Unknown';
   };
 
@@ -73,8 +80,8 @@ export default function AssignmentManagement() {
     });
 
     // Update the device with department and location info
-    const devices = getDevices();
-    const deviceToUpdate = devices.find(d => d.id === selectedAssignment.deviceId);
+    const currentDevices = getDevices();
+    const deviceToUpdate = currentDevices.find(d => d.id === selectedAssignment.deviceId);
     if (deviceToUpdate) {
       const updatedDevice = {
         ...deviceToUpdate,
@@ -90,6 +97,7 @@ export default function AssignmentManagement() {
     setApprovalDialog(false);
     setSelectedAssignment(null);
     setActionType(null);
+    setRejectionReason('');
   };
 
   const handleReject = () => {
@@ -202,7 +210,14 @@ export default function AssignmentManagement() {
               </thead>
               <tbody className="divide-y divide-border">
                 {filteredAssignments.map((assignment) => (
-                  <tr key={assignment.id} className="table-row-hover">
+                  <tr
+                    key={assignment.id}
+                    className="table-row-hover cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => {
+                      setSelectedAssignment(assignment);
+                      setViewDetailsDialog(true);
+                    }}
+                  >
                     <td className="px-6 py-4">
                       <div>
                         <p className="text-sm font-medium">{getDeviceName(assignment.deviceId)}</p>
@@ -224,17 +239,8 @@ export default function AssignmentManagement() {
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {new Date(assignment.createdAt).toLocaleDateString()}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => setSelectedAssignment(assignment)}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-
                         {canApprove && assignment.status === 'REQUESTED' && (
                           <>
                             <Button
@@ -281,7 +287,7 @@ export default function AssignmentManagement() {
       </Card>
 
       {/* Assignment Details Dialog */}
-      <Dialog open={!!selectedAssignment && !approvalDialog} onOpenChange={() => selectedAssignment && !approvalDialog && setSelectedAssignment(null)}>
+      <Dialog open={viewDetailsDialog} onOpenChange={setViewDetailsDialog}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Assignment Details</DialogTitle>

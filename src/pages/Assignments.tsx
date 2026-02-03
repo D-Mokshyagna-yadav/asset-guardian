@@ -11,14 +11,24 @@ export default function Assignments() {
   const { user } = useAuth();
   const canApprove = user?.role === 'SUPER_ADMIN';
   const isITStaff = user?.role === 'IT_STAFF';
+  const isDeptIncharge = user?.role === 'DEPARTMENT_INCHARGE';
 
   const devices = getDevices();
   const allAssignments = getAssignments();
 
-  // Filter assignments - IT_STAFF sees their own, admins see all
-  const assignments = isITStaff
-    ? allAssignments.filter(a => a.requestedBy === user?.id)
-    : allAssignments;
+  // Filter assignments based on role
+  let assignments = allAssignments;
+  if (isITStaff) {
+    // IT_STAFF sees their own requests and department's approved assignments
+    assignments = allAssignments.filter(a => 
+      a.requestedBy === user?.id || 
+      (a.status === 'APPROVED' && a.departmentId === user?.departmentId)
+    );
+  } else if (isDeptIncharge) {
+    // DEPARTMENT_INCHARGE sees only their department's assignments
+    assignments = allAssignments.filter(a => a.departmentId === user?.departmentId);
+  }
+  // SUPER_ADMIN sees all assignments
 
   const getDeviceName = (id: string) => {
     return devices.find(d => d.id === id)?.deviceName || 'Unknown Device';
@@ -40,10 +50,12 @@ export default function Assignments() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Assignments</h1>
           <p className="text-muted-foreground mt-1">
-            {isITStaff ? 'View your device requests and approved assignments' : 'Manage device assignments and approvals'}
+            {isITStaff ? 'View your device requests and approved assignments' : 
+             isDeptIncharge ? 'View your department\'s device assignments' :
+             'Manage device assignments and approvals'}
           </p>
         </div>
-        {!isITStaff && (
+        {canApprove && (
           <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
             <Plus className="h-4 w-4 mr-2" />
             <Link to="/assignments/new" className="no-underline">
@@ -51,7 +63,7 @@ export default function Assignments() {
             </Link>
           </Button>
         )}
-        {isITStaff && (
+        {(isITStaff || isDeptIncharge) && (
           <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
             <Plus className="h-4 w-4 mr-2" />
             <Link to="/request-device" className="no-underline">

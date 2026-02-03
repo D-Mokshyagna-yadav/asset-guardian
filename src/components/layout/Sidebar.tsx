@@ -19,10 +19,10 @@ import { cn } from '@/lib/utils';
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'] },
   { name: 'Inventory', href: '/inventory', icon: Monitor, roles: ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'] },
-  { name: 'Departments', href: '/departments', icon: Building2, roles: ['SUPER_ADMIN', 'IT_STAFF'] },
-  { name: 'Assignments', href: '/assignments', icon: ClipboardList, roles: ['SUPER_ADMIN', 'IT_STAFF'] },
+  { name: 'Departments', href: '/departments', icon: Building2, roles: ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'] },
+  { name: 'Assignments', href: '/assignments', icon: ClipboardList, roles: ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'] },
   { name: 'Requests', href: '/assignment-management', icon: FileCheck, roles: ['SUPER_ADMIN'] },
-  { name: 'Request Device', href: '/request-device', icon: Send, roles: ['IT_STAFF'] },
+  { name: 'Request Device', href: '/request-device', icon: Send, roles: ['IT_STAFF', 'DEPARTMENT_INCHARGE'] },
   { name: 'Update Status', href: '/assignment-status', icon: CheckCircle2, roles: ['IT_STAFF'] },
   { name: 'Users', href: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
   { name: 'Audit Logs', href: '/audit-logs', icon: History, roles: ['SUPER_ADMIN', 'IT_STAFF'] },
