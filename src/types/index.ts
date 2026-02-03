@@ -11,9 +11,11 @@ export interface User {
   name: string;
   email: string;
   role: UserRole;
-  departmentId?: string;
+  departmentId?: string | Department;
   isActive: boolean;
+  lastLogin?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface Department {
@@ -23,6 +25,7 @@ export interface Department {
   hodName: string;
   contactEmail: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface Location {
@@ -32,6 +35,7 @@ export interface Location {
   room: string;
   rack?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface Device {
@@ -56,29 +60,33 @@ export interface Device {
   warrantyStart?: string;
   warrantyEnd?: string;
   status: DeviceStatus;
-  departmentId?: string;
-  locationId?: string;
-  inchargeUserId?: string;
+  departmentId?: string | Department;
+  locationId?: string | Location;
+  inchargeUserId?: string | User;
   features?: string[];
   notes?: string;
-  createdBy: string;
+  createdBy: string | User;
   createdAt: string;
   updatedAt: string;
 }
 
 export interface Assignment {
   id: string;
-  deviceId: string;
-  departmentId: string;
-  locationId: string;
-  requestedBy: string;
+  deviceId: string | Device;
+  departmentId: string | Department;
+  locationId: string | Location;
+  requestedBy: string | User;
   quantity: number;
   reason: RequestReason;
   notes?: string;
-  approvedBy?: string;
+  approvedBy?: string | User;
   status: AssignmentStatus;
   remarks?: string;
+  assignedAt?: string;
+  completedAt?: string;
+  rejectedAt?: string;
   createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuditLog {
@@ -86,11 +94,13 @@ export interface AuditLog {
   entityType: string;
   entityId: string;
   action: string;
-  performedBy: string;
+  performedBy: string | User;
   oldData?: Record<string, unknown>;
   newData?: Record<string, unknown>;
   timestamp: string;
   ipAddress: string;
+  userAgent?: string;
+  sessionId?: string;
 }
 
 export interface AuthState {
