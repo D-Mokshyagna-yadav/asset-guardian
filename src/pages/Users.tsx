@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Search, Plus, Shield, UserCheck, UserX, Eye } from 'lucide-react';
 import { User, UserRole } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 
 const mockUsers: User[] = [
   { id: '1', name: 'John Administrator', email: 'admin@college.edu', role: 'SUPER_ADMIN', isActive: true, createdAt: '2024-01-01' },
@@ -28,7 +29,19 @@ const getRoleBadgeStyle = (role: UserRole) => {
 };
 
 export default function Users() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Role-based access control
+  const isAdmin = user?.role === 'SUPER_ADMIN';
+  const canCreateUser = isAdmin;
+  const canEditUser = isAdmin;
+  const canDeleteUser = isAdmin;
+  const canViewUsers = isAdmin || user?.role === 'IT_STAFF';
+
+  // Check for single admin restriction
+  const existingAdmins = mockUsers.filter(u => u.role === 'SUPER_ADMIN');
+  const hasMaxAdmins = existingAdmins.length >= 1;
 
   const filteredUsers = mockUsers.filter(
     (user) =>
@@ -42,12 +55,18 @@ export default function Users() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">User Management</h1>
-          <p className="text-muted-foreground mt-1">Manage system users and their roles</p>
+          <p className="text-muted-foreground mt-1">
+            {isAdmin ? 'Manage system users and their roles' : 'View system users'}
+          </p>
         </div>
-        <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-          <Plus className="h-4 w-4 mr-2" />
-          Add User
-        </Button>
+        {canCreateUser && (
+          <Link to="/users/new">
+            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Plus className="h-4 w-4 mr-2" />
+              Add User
+            </Button>
+          </Link>
+        )}
       </div>
 
       {/* Search */}
@@ -116,17 +135,25 @@ export default function Users() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <Link to={`/users/${user.id}`}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Eye className="h-4 w-4" />
+                        {canViewUsers && (
+                          <Link to={`/users/${user.id}`}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        )}
+                        {canEditUser && (
+                          <Link to={`/users/${user.id}/edit`}>
+                            <Button variant="outline" size="sm">
+                              Edit
+                            </Button>
+                          </Link>
+                        )}
+                        {canDeleteUser && user.role !== 'SUPER_ADMIN' && (
+                          <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10">
+                            Delete
                           </Button>
-                        </Link>
-                        <Button variant="outline" size="sm">
-                          Edit
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                          {user.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
+                        )}
                       </div>
                     </td>
                   </tr>

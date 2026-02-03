@@ -18,6 +18,7 @@ import DepartmentDetails from "./pages/DepartmentDetails";
 import DepartmentForm from "./pages/DepartmentForm";
 import Users from "./pages/Users";
 import UserDetails from "./pages/UserDetails";
+import UserForm from "./pages/UserForm";
 import AuditLogs from "./pages/AuditLogs";
 import AuditLogDetails from "./pages/AuditLogDetails";
 import Assignments from "./pages/Assignments";
@@ -50,14 +51,28 @@ const App = () => (
             >
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/inventory" element={<Inventory />} />
-              <Route path="/inventory/new" element={<DeviceForm />} />
+              <Route
+                path="/inventory/new"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                    <DeviceForm />
+                  </ProtectedRoute>
+                }
+              />
               <Route path="/inventory/:id/preview" element={<DevicePreview />} />
               <Route path="/inventory/:id" element={<DeviceDetails />} />
-              <Route path="/inventory/:id/edit" element={<DeviceForm />} />
+              <Route
+                path="/inventory/:id/edit"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                    <DeviceForm />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/device-management"
                 element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                     <DeviceManagement />
                   </ProtectedRoute>
                 }
@@ -159,10 +174,26 @@ const App = () => (
                 }
               />
               <Route
+                path="/users/new"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                    <UserForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="/users/:id"
                 element={
                   <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
                     <UserDetails />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/users/:id/edit"
+                element={
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN']}>
+                    <UserForm />
                   </ProtectedRoute>
                 }
               />

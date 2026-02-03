@@ -81,15 +81,15 @@ const seedData = async () => {
     const users = await User.create([
       {
         name: 'John Administrator',
-        email: 'admin@college.edu',
-        password: 'Admin@123',
+        email: 'john@college.edu',
+        password: 'demo1234',
         role: 'SUPER_ADMIN',
         isActive: true,
       },
       {
         name: 'Sarah Tech',
         email: 'sarah@college.edu',
-        password: 'Staff@123',
+        password: 'demo1234',
         role: 'IT_STAFF',
         departmentId: departments[0]._id,
         isActive: true,
@@ -97,7 +97,7 @@ const seedData = async () => {
       {
         name: 'Mike Davis',
         email: 'mike@college.edu',
-        password: 'Staff@123',
+        password: 'demo1234',
         role: 'IT_STAFF',
         departmentId: departments[1]._id,
         isActive: true,
@@ -105,7 +105,7 @@ const seedData = async () => {
       {
         name: 'Emily Brown',
         email: 'emily@college.edu',
-        password: 'Dept@123',
+        password: 'demo1234',
         role: 'DEPARTMENT_INCHARGE',
         departmentId: departments[0]._id,
         isActive: true,
@@ -113,7 +113,7 @@ const seedData = async () => {
       {
         name: 'David Wilson',
         email: 'david@college.edu',
-        password: 'Dept@123',
+        password: 'demo1234',
         role: 'DEPARTMENT_INCHARGE',
         departmentId: departments[2]._id,
         isActive: true,
@@ -128,7 +128,7 @@ const seedData = async () => {
         deviceName: 'Core Switch 01',
         category: 'Network Switch',
         brand: 'Cisco',
-        model: 'Catalyst 9300',
+        deviceModel: 'Catalyst 9300',
         serialNumber: 'CSC-98765432',
         macAddress: 'AA:BB:CC:DD:EE:01',
         ipAddress: '192.168.1.1',
@@ -155,7 +155,7 @@ const seedData = async () => {
         deviceName: 'Access Point Lab-101',
         category: 'Wireless AP',
         brand: 'Ubiquiti',
-        model: 'UniFi 6 Pro',
+        deviceModel: 'UniFi 6 Pro',
         serialNumber: 'UBQ-12345678',
         macAddress: 'AA:BB:CC:DD:EE:02',
         ipAddress: '192.168.1.50',
@@ -182,7 +182,7 @@ const seedData = async () => {
         deviceName: 'Dell PowerEdge R740',
         category: 'Server',
         brand: 'Dell',
-        model: 'PowerEdge R740',
+        deviceModel: 'PowerEdge R740',
         serialNumber: 'DELL-87654321',
         macAddress: 'AA:BB:CC:DD:EE:03',
         ipAddress: '192.168.1.10',
@@ -212,12 +212,13 @@ const seedData = async () => {
     ]);
 
     console.log('✅ Database seeded successfully!');
-    console.log('\n📧 Login Credentials:');
-    console.log('Super Admin: admin@college.edu / Admin@123');
-    console.log('IT Staff: sarah@college.edu / Staff@123');
-    console.log('IT Staff: mike@college.edu / Staff@123');
-    console.log('Dept Incharge: emily@college.edu / Dept@123');
-    console.log('Dept Incharge: david@college.edu / Dept@123');
+    console.log('\n📧 Login Credentials (all passwords: demo1234):');
+    console.log('Super Admin: john@college.edu / demo1234');
+    console.log('IT Staff: sarah@college.edu / demo1234');
+    console.log('IT Staff: mike@college.edu / demo1234');
+    console.log('Dept Incharge: emily@college.edu / demo1234');
+    console.log('Dept Incharge: david@college.edu / demo1234');
+    console.log('\n🔗 These match the frontend mock users exactly.');
 
     process.exit(0);
   } catch (error) {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ import { mockDepartments, mockLocations, mockUsers } from '@/data/mockData';
 import { Device } from '@/types';
 import { upsertDevice, getDevices } from '@/data/store';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useAuth } from '@/contexts/AuthContext';
 
 const DEVICE_CATEGORIES = [
   'Network Switch',
@@ -31,10 +32,22 @@ const DEVICE_CATEGORIES = [
 const DEVICE_STATUS = ['IN_STOCK', 'ISSUED', 'INSTALLED', 'MAINTENANCE', 'SCRAPPED'];
 
 export default function DeviceForm() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
+
+  // Role-based access control
+  const isAdmin = user?.role === 'SUPER_ADMIN';
+  const canEditDevices = isAdmin;
+  
+  // Redirect if user doesn't have permission
+  useEffect(() => {
+    if (!canEditDevices) {
+      navigate('/inventory');
+    }
+  }, [canEditDevices, navigate]);
 
   // Find existing device if editing
   const storedDevices = getDevices();

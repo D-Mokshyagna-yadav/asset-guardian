@@ -32,7 +32,7 @@ export default function DeviceDetails() {
   const location = mockLocations.find(l => l.id === device?.locationId);
   const deviceLogs = mockAuditLogs.filter(log => log.entityId === id && log.entityType === 'Device');
 
-  const canEdit = user?.role === 'SUPER_ADMIN' || user?.role === 'IT_STAFF';
+  const canEdit = user?.role === 'SUPER_ADMIN';
   const canDelete = user?.role === 'SUPER_ADMIN';
 
   if (!device) {

@@ -57,6 +57,7 @@ export default function Inventory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
+  const [monthFilter, setMonthFilter] = useState<string>('all');
   const [devices] = useState<Device[]>(initialDevices);
   const [assignments] = useState(initialAssignments);
   const [categories, setCategories] = useState<string[]>(initialCategories);
@@ -71,11 +72,29 @@ export default function Inventory() {
   const [newCategoryOpen, setNewCategoryOpen] = useState(false);
 
   const isAdmin = user?.role === 'SUPER_ADMIN';
-  const canViewDetails = true; // Both ADMIN and IT_STAFF can view
-  const canEdit = isAdmin; // Only ADMIN can edit/create
-  const canDelete = isAdmin; // Only ADMIN can delete
+  const isITStaff = user?.role === 'IT_STAFF';
+  const canViewDetails = isAdmin || isITStaff; // Both ADMIN and IT_STAFF can view
+  const canEdit = isAdmin; // Only SUPER_ADMIN can edit/create
+  const canDelete = isAdmin; // Only SUPER_ADMIN can delete
+  const canManageCategories = isAdmin; // Only SUPER_ADMIN can manage categories
+  const canManageGroups = isAdmin; // Only SUPER_ADMIN can manage groups
 
   const statusOptions: DeviceStatus[] = ['IN_STOCK', 'ISSUED', 'INSTALLED', 'MAINTENANCE', 'SCRAPPED'];
+
+  // Generate month options for the last 12 months
+  const getMonthOptions = () => {
+    const months = [{ value: 'all', label: 'All Months' }];
+    const now = new Date();
+    for (let i = 0; i < 12; i++) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const value = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+      const label = date.toLocaleDateString('en-US', { year: 'numeric', month: 'long' });
+      months.push({ value, label });
+    }
+    return months;
+  };
+
+  const monthOptions = getMonthOptions();
 
   const filteredDevices = useMemo(() => {
     return devices.filter((device) => {
@@ -86,10 +105,19 @@ export default function Inventory() {
 
       const matchesStatus = statusFilter === 'all' || device.status === statusFilter;
       const matchesCategory = categoryFilter === 'All' || device.category === categoryFilter;
+      
+      let matchesMonth = true;
+      if (monthFilter !== 'all') {
+        const [filterYear, filterMonth] = monthFilter.split('-').map(Number);
+        const deviceDate = new Date(device.purchaseDate || device.arrivalDate || device.createdAt);
+        const deviceYear = deviceDate.getFullYear();
+        const deviceMonth = deviceDate.getMonth() + 1;
+        matchesMonth = deviceYear === filterYear && deviceMonth === filterMonth;
+      }
 
-      return matchesSearch && matchesStatus && matchesCategory;
+      return matchesSearch && matchesStatus && matchesCategory && matchesMonth;
     });
-  }, [devices, searchQuery, statusFilter, categoryFilter]);
+  }, [devices, searchQuery, statusFilter, categoryFilter, monthFilter]);
 
   const getDepartmentName = (id?: string) => {
     return mockDepartments.find(d => d.id === id)?.name || '—';
@@ -208,7 +236,19 @@ export default function Inventory() {
                   ))}
                 </SelectContent>
               </Select>
-              {canEdit && (
+              <Select value={monthFilter} onValueChange={setMonthFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Purchase Month" />
+                </SelectTrigger>
+                <SelectContent>
+                  {monthOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {canManageCategories && (
                 <Button
                   variant="outline"
                   size="sm"
