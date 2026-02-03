@@ -47,7 +47,7 @@ export default function Login() {
         return acc;
       }, {} as Record<string, typeof mockUsers>);
     
-      const roleOrder = ['SUPER_ADMIN', 'MANAGER', 'IT_STAFF', 'DEPARTMENT_INCHARGE'];
+      const roleOrder = ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'];
       const sortedRoles = roleOrder.filter((role) => Boolean(usersByRole[role]));
     
       return (

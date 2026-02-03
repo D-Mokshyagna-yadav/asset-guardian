@@ -8,8 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { mockAssignments, mockDevices, mockDepartments, mockLocations, mockUsers } from '@/data/mockData';
-import { Assignment } from '@/types';
+import { mockDepartments, mockLocations, mockUsers } from '@/data/mockData';
+import { Assignment, RequestReason } from '@/types';
+import {
+  getAssignments,
+  getAssignedQuantity,
+  getAvailableQuantity,
+  getDevices,
+  saveAssignments,
+} from '@/data/store';
 
 export default function AssignmentForm() {
   const navigate = useNavigate();
@@ -17,16 +24,31 @@ export default function AssignmentForm() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
+  const devices = getDevices();
+  const [assignments, setAssignments] = useState(getAssignments());
+
   // Find existing assignment if editing
-  const existingAssignment = id ? mockAssignments.find(a => a.id === id) : null;
+  const existingAssignment = id ? assignments.find(a => a.id === id) : null;
 
   const [formData, setFormData] = useState({
     deviceId: existingAssignment?.deviceId || '',
     departmentId: existingAssignment?.departmentId || '',
     locationId: existingAssignment?.locationId || '',
     userId: existingAssignment?.requestedBy || '',
+    quantity: existingAssignment?.quantity?.toString() || '1',
+    reason: existingAssignment?.reason || 'INSTALLATION',
+    notes: existingAssignment?.notes || '',
     remarks: existingAssignment?.remarks || '',
   });
+
+  const selectedDevice = devices.find(d => d.id === formData.deviceId);
+  const assignedQty = selectedDevice ? getAssignedQuantity(selectedDevice.id, assignments) : 0;
+  const adjustment = existingAssignment && selectedDevice && existingAssignment.deviceId === selectedDevice.id
+    ? existingAssignment.quantity
+    : 0;
+  const availableQty = selectedDevice
+    ? Math.max(selectedDevice.quantity - (assignedQty - adjustment), 0)
+    : 0;
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -35,6 +57,12 @@ export default function AssignmentForm() {
     if (!formData.departmentId) newErrors.departmentId = 'Department is required';
     if (!formData.locationId) newErrors.locationId = 'Location is required';
     if (!formData.userId) newErrors.userId = 'User is required';
+    if (!formData.quantity || parseInt(formData.quantity.toString()) < 1) {
+      newErrors.quantity = 'Quantity must be at least 1';
+    }
+    if (selectedDevice && parseInt(formData.quantity.toString()) > availableQty) {
+      newErrors.quantity = `Only ${availableQty} available in stock`;
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -56,15 +84,22 @@ export default function AssignmentForm() {
         departmentId: formData.departmentId,
         locationId: formData.locationId,
         requestedBy: formData.userId,
+        quantity: parseInt(formData.quantity.toString()),
+        reason: formData.reason as RequestReason,
+        notes: formData.notes || undefined,
         approvedBy: existingAssignment?.approvedBy,
         status: existingAssignment?.status || 'PENDING',
         remarks: formData.remarks || undefined,
         createdAt: existingAssignment?.createdAt || new Date().toISOString(),
       };
 
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
 
-      console.log('Assignment saved:', newAssignment);
+      const nextAssignments = existingAssignment
+        ? assignments.map(a => (a.id === newAssignment.id ? newAssignment : a))
+        : [...assignments, newAssignment];
+      saveAssignments(nextAssignments);
+      setAssignments(nextAssignments);
       navigate('/assignments');
     } catch (error) {
       setErrors({ submit: 'Failed to save assignment. Please try again.' });
@@ -135,15 +170,40 @@ export default function AssignmentForm() {
                     <SelectValue placeholder="Choose a device" />
                   </SelectTrigger>
                   <SelectContent>
-                    {mockDevices.map(device => (
-                      <SelectItem key={device.id} value={device.id}>
-                        {device.deviceName} ({device.assetTag})
-                      </SelectItem>
-                    ))}
+                    {devices.map(device => {
+                      const available = getAvailableQuantity(device, assignments);
+                      return (
+                        <SelectItem key={device.id} value={device.id} disabled={available === 0}>
+                          {device.deviceName} ({device.assetTag}) — {available === 0 ? 'No stock' : `${available} available`}
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 {errors.deviceId && (
                   <p className="text-sm text-red-500">{errors.deviceId}</p>
+                )}
+                {selectedDevice && (
+                  <p className="text-xs text-muted-foreground">
+                    Available stock: {availableQty > 0 ? availableQty : 'No stock'}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="quantity">Quantity *</Label>
+                <Input
+                  id="quantity"
+                  name="quantity"
+                  type="number"
+                  min="1"
+                  max={availableQty || 1}
+                  value={formData.quantity}
+                  onChange={handleChange}
+                  className={errors.quantity ? 'border-red-500' : ''}
+                />
+                {errors.quantity && (
+                  <p className="text-sm text-red-500">{errors.quantity}</p>
                 )}
               </div>
 
@@ -205,6 +265,38 @@ export default function AssignmentForm() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="reason">Request Reason *</Label>
+                <Select value={formData.reason} onValueChange={(value) => handleSelectChange('reason', value)}>
+                  <SelectTrigger className={errors.reason ? 'border-red-500' : ''}>
+                    <SelectValue placeholder="Select reason for request" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="INSTALLATION">Installation</SelectItem>
+                    <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                    <SelectItem value="REPLACEMENT_MALFUNCTION">Replacement (Device Malfunction)</SelectItem>
+                    <SelectItem value="UPGRADE">Upgrade</SelectItem>
+                    <SelectItem value="NEW_REQUIREMENT">New Requirement</SelectItem>
+                    <SelectItem value="OTHER">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.reason && (
+                  <p className="text-sm text-red-500">{errors.reason}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Additional Notes</Label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleChange}
+                  placeholder="Add any additional notes about this request (e.g., specific requirements, urgency, etc.)"
+                  rows={3}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="remarks">Remarks</Label>
                 <Textarea
                   id="remarks"
@@ -219,7 +311,7 @@ export default function AssignmentForm() {
               <div className="flex gap-4">
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || (selectedDevice ? availableQty === 0 : false)}
                 >
                   {isLoading ? 'Saving...' : id ? 'Update Assignment' : 'Create Assignment'}
                 </Button>

@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { mockDevices, mockDepartments, mockLocations, mockAuditLogs } from '@/data/mockData';
+import { mockDepartments, mockLocations, mockAuditLogs } from '@/data/mockData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,13 +18,16 @@ import {
   Clock,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAssignments, getAvailableQuantity, getDevices } from '@/data/store';
 
 export default function DeviceDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const device = mockDevices.find(d => d.id === id);
+  const devices = getDevices();
+  const assignments = getAssignments();
+  const device = devices.find(d => d.id === id);
   const department = mockDepartments.find(d => d.id === device?.departmentId);
   const location = mockLocations.find(l => l.id === device?.locationId);
   const deviceLogs = mockAuditLogs.filter(log => log.entityId === id && log.entityType === 'Device');
@@ -111,6 +114,18 @@ export default function DeviceDetails() {
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Category</p>
                   <p className="text-sm font-medium">{device.category}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Quantity</p>
+                  <p className="text-sm font-medium">{device.quantity}</p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Available</p>
+                  <p className="text-sm font-medium">
+                    {getAvailableQuantity(device, assignments) > 0
+                      ? getAvailableQuantity(device, assignments)
+                      : 'No stock'}
+                  </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Serial Number</p>

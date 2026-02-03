@@ -1,17 +1,27 @@
 import { Link } from 'react-router-dom';
-import { mockAssignments, mockDevices, mockDepartments, mockLocations } from '@/data/mockData';
+import { mockDepartments, mockLocations } from '@/data/mockData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Check, X, Eye } from 'lucide-react';
+import { Plus, Check, X, Eye, Edit2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getAssignments, getDevices } from '@/data/store';
 
 export default function Assignments() {
   const { user } = useAuth();
   const canApprove = user?.role === 'SUPER_ADMIN';
+  const isITStaff = user?.role === 'IT_STAFF';
+
+  const devices = getDevices();
+  const allAssignments = getAssignments();
+
+  // Filter assignments - IT_STAFF sees their own, admins see all
+  const assignments = isITStaff
+    ? allAssignments.filter(a => a.requestedBy === user?.id)
+    : allAssignments;
 
   const getDeviceName = (id: string) => {
-    return mockDevices.find(d => d.id === id)?.deviceName || 'Unknown Device';
+    return devices.find(d => d.id === id)?.deviceName || 'Unknown Device';
   };
 
   const getDepartmentName = (id: string) => {
@@ -29,14 +39,26 @@ export default function Assignments() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Assignments</h1>
-          <p className="text-muted-foreground mt-1">Manage device assignments and approvals</p>
+          <p className="text-muted-foreground mt-1">
+            {isITStaff ? 'View your device requests and approved assignments' : 'Manage device assignments and approvals'}
+          </p>
         </div>
-        <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
-          <Plus className="h-4 w-4 mr-2" />
-          <Link to="/assignments/new" className="no-underline">
-            New Assignment
-          </Link>
-        </Button>
+        {!isITStaff && (
+          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Plus className="h-4 w-4 mr-2" />
+            <Link to="/assignments/new" className="no-underline">
+              New Assignment
+            </Link>
+          </Button>
+        )}
+        {isITStaff && (
+          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+            <Plus className="h-4 w-4 mr-2" />
+            <Link to="/request-device" className="no-underline">
+              Request Device
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Assignments Table */}
@@ -47,6 +69,7 @@ export default function Assignments() {
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Device</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Qty</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Department</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Location</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Remarks</th>
@@ -56,11 +79,12 @@ export default function Assignments() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {mockAssignments.map((assignment) => (
+                {assignments.map((assignment) => (
                   <tr key={assignment.id} className="table-row-hover">
                     <td className="px-6 py-4">
                       <p className="text-sm font-medium text-foreground">{getDeviceName(assignment.deviceId)}</p>
                     </td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{assignment.quantity ?? 1}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {getDepartmentName(assignment.departmentId)}
                     </td>
@@ -83,7 +107,14 @@ export default function Assignments() {
                             <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
-                        {canApprove && assignment.status === 'PENDING' && (
+                        {isITStaff && assignment.status === 'APPROVED' && (
+                          <Link to="/assignment-status">
+                            <Button variant="outline" size="icon" className="h-8 w-8">
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                        )}
+                        {canApprove && assignment.status === 'REQUESTED' && (
                           <>
                             <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 h-8">
                               <Check className="h-4 w-4 mr-1" />
@@ -103,7 +134,7 @@ export default function Assignments() {
             </table>
           </div>
 
-          {mockAssignments.length === 0 && (
+          {assignments.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground">No assignments found</p>
             </div>

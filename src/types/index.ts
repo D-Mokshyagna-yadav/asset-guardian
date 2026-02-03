@@ -1,8 +1,10 @@
-export type UserRole = 'SUPER_ADMIN' | 'MANAGER' | 'IT_STAFF' | 'DEPARTMENT_INCHARGE';
+export type UserRole = 'SUPER_ADMIN' | 'IT_STAFF' | 'DEPARTMENT_INCHARGE';
 
 export type DeviceStatus = 'IN_STOCK' | 'ISSUED' | 'INSTALLED' | 'MAINTENANCE' | 'SCRAPPED';
 
-export type AssignmentStatus = 'REQUESTED' | 'PENDING' | 'APPROVED' | 'REJECTED';
+export type AssignmentStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'PENDING' | 'COMPLETED' | 'MAINTENANCE';
+
+export type RequestReason = 'INSTALLATION' | 'MAINTENANCE' | 'REPLACEMENT_MALFUNCTION' | 'UPGRADE' | 'NEW_REQUIREMENT' | 'OTHER';
 
 export interface User {
   id: string;
@@ -57,7 +59,6 @@ export interface Device {
   departmentId?: string;
   locationId?: string;
   inchargeUserId?: string;
-  managerId?: string;
   features?: string[];
   notes?: string;
   createdBy: string;
@@ -71,6 +72,9 @@ export interface Assignment {
   departmentId: string;
   locationId: string;
   requestedBy: string;
+  quantity: number;
+  reason: RequestReason;
+  notes?: string;
   approvedBy?: string;
   status: AssignmentStatus;
   remarks?: string;

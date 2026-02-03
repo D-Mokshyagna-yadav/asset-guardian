@@ -10,6 +10,9 @@ import {
   LogOut,
   Shield,
   Server,
+  Send,
+  CheckCircle2,
+  FileCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -18,6 +21,9 @@ const navigation = [
   { name: 'Inventory', href: '/inventory', icon: Monitor, roles: ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'] },
   { name: 'Departments', href: '/departments', icon: Building2, roles: ['SUPER_ADMIN', 'IT_STAFF'] },
   { name: 'Assignments', href: '/assignments', icon: ClipboardList, roles: ['SUPER_ADMIN', 'IT_STAFF'] },
+  { name: 'Requests', href: '/assignment-management', icon: FileCheck, roles: ['SUPER_ADMIN'] },
+  { name: 'Request Device', href: '/request-device', icon: Send, roles: ['IT_STAFF'] },
+  { name: 'Update Status', href: '/assignment-status', icon: CheckCircle2, roles: ['IT_STAFF'] },
   { name: 'Users', href: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
   { name: 'Audit Logs', href: '/audit-logs', icon: History, roles: ['SUPER_ADMIN', 'IT_STAFF'] },
 ];

@@ -6,10 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { AlertCircle, ArrowLeft, Plus, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Plus, X, MapPin, Building2, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { mockDevices, mockDepartments, mockLocations, mockUsers } from '@/data/mockData';
+import { mockDepartments, mockLocations, mockUsers } from '@/data/mockData';
 import { Device } from '@/types';
+import { upsertDevice, getDevices } from '@/data/store';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const DEVICE_CATEGORIES = [
   'Network Switch',
@@ -35,7 +37,8 @@ export default function DeviceForm() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Find existing device if editing
-  const existingDevice = id ? mockDevices.find(d => d.id === id) : null;
+  const storedDevices = getDevices();
+  const existingDevice = id ? storedDevices.find(d => d.id === id) : null;
 
   const [formData, setFormData] = useState({
     assetTag: existingDevice?.assetTag || '',
@@ -60,12 +63,13 @@ export default function DeviceForm() {
     departmentId: existingDevice?.departmentId || '',
     locationId: existingDevice?.locationId || '',
     inchargeUserId: existingDevice?.inchargeUserId || '',
-    managerId: existingDevice?.managerId || '',
     features: existingDevice?.features || [],
     notes: existingDevice?.notes || '',
   });
 
   const [newFeature, setNewFeature] = useState('');
+  const [noWarrantyExpiry, setNoWarrantyExpiry] = useState(() => !existingDevice?.warrantyEnd);
+  const [warrantyYears, setWarrantyYears] = useState('');
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -96,6 +100,7 @@ export default function DeviceForm() {
     setIsLoading(true);
 
     try {
+      const warrantyEndValue = noWarrantyExpiry ? undefined : (formData.warrantyEnd || undefined);
       const newDevice: Device = {
         id: id || `dev-${Date.now()}`,
         assetTag: formData.assetTag || `AST-${Date.now()}`,
@@ -115,12 +120,11 @@ export default function DeviceForm() {
         cost: parseFloat(formData.cost.toString()),
         quantity: parseInt(formData.quantity.toString()),
         warrantyStart: formData.warrantyStart || undefined,
-        warrantyEnd: formData.warrantyEnd || undefined,
+        warrantyEnd: warrantyEndValue,
         status: formData.status as any,
-        departmentId: formData.departmentId || undefined,
-        locationId: formData.locationId || undefined,
+        departmentId: formData.departmentId && formData.departmentId !== 'none' ? formData.departmentId : undefined,
+        locationId: formData.locationId && formData.locationId !== 'none' ? formData.locationId : undefined,
         inchargeUserId: formData.inchargeUserId || undefined,
-        managerId: formData.managerId || undefined,
         features: formData.features.length > 0 ? formData.features : undefined,
         notes: formData.notes || undefined,
         createdBy: existingDevice?.createdBy || '1',
@@ -128,9 +132,8 @@ export default function DeviceForm() {
         updatedAt: new Date().toISOString().split('T')[0],
       };
 
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      console.log('Device saved:', newDevice);
+      await new Promise(resolve => setTimeout(resolve, 300));
+      upsertDevice(newDevice);
       navigate('/inventory');
     } catch (error) {
       setErrors({ submit: 'Failed to save device. Please try again.' });
@@ -145,6 +148,9 @@ export default function DeviceForm() {
       ...prev,
       [name]: value,
     }));
+    if (name === 'warrantyEnd') {
+      setNoWarrantyExpiry(!value);
+    }
     if (errors[name]) {
       setErrors(prev => ({
         ...prev,
@@ -166,6 +172,25 @@ export default function DeviceForm() {
     }
   };
 
+  const getWarrantyBaseDate = () => {
+    return formData.warrantyStart || formData.purchaseDate || formData.arrivalDate;
+  };
+
+  const applyWarrantyYears = (yearsStr: string) => {
+    if (yearsStr === 'manual') return; // Do nothing for manual entry
+    const years = parseInt(yearsStr);
+    const base = getWarrantyBaseDate();
+    if (!base) return;
+    const baseDate = new Date(base);
+    baseDate.setFullYear(baseDate.getFullYear() + years);
+    const nextEnd = baseDate.toISOString().split('T')[0];
+    setFormData(prev => ({
+      ...prev,
+      warrantyEnd: nextEnd,
+    }));
+    setNoWarrantyExpiry(false);
+  }
+
   const addFeature = () => {
     if (newFeature.trim() && !formData.features.includes(newFeature.trim())) {
       setFormData(prev => ({
@@ -183,26 +208,63 @@ export default function DeviceForm() {
     }));
   };
 
+  const getDepartmentName = (id?: string) => {
+    if (!id || id === 'none') return 'Not Assigned';
+    return mockDepartments.find(d => d.id === id)?.name || 'Unknown';
+  };
+
+  const getLocationName = (id?: string) => {
+    if (!id || id === 'none') return 'Not Assigned';
+    const loc = mockLocations.find(l => l.id === id);
+    return loc ? `${loc.building}, ${loc.floor}, ${loc.room}` : 'Unknown';
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-muted/20 to-muted/50 p-4 lg:p-8">
       <div className="max-w-4xl mx-auto">
         <Button
           variant="ghost"
           onClick={() => navigate('/inventory')}
-          className="mb-6"
+          className="mb-6 hover:bg-muted"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Inventory
         </Button>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{id ? 'Edit Device' : 'Add New Device'}</CardTitle>
-            <CardDescription>
+        <Card className="border-0 shadow-lg">
+          <CardHeader className="bg-gradient-to-r from-primary/10 to-primary/5 border-b">
+            <CardTitle className="text-2xl">{id ? 'Edit Device' : 'Add New Device'}</CardTitle>
+            <CardDescription className="text-base">
               {id ? 'Update device information' : 'Register a new device in the inventory'}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-8">
+            {/* Current Assignment Info - Only show when editing */}
+            {id && existingDevice && (
+              <Alert className="mb-8 border-blue-200 bg-blue-50">
+                <Info className="h-5 w-5 text-blue-600" />
+                <AlertDescription className="text-blue-900 ml-2">
+                  <div className="font-semibold mb-2">Current Assignment Status</div>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Department</p>
+                        <p className="font-medium">{getDepartmentName(existingDevice.departmentId)}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4" />
+                      <div>
+                        <p className="text-xs text-muted-foreground">Location</p>
+                        <p className="font-medium text-xs">{getLocationName(existingDevice.locationId)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
             {errors.submit && (
               <Alert variant="destructive" className="mb-6">
                 <AlertCircle className="h-4 w-4" />
@@ -210,10 +272,13 @@ export default function DeviceForm() {
               </Alert>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Device Information */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+              <div className="border-b pb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-1 bg-primary rounded"></div>
+                  <h3 className="text-lg font-semibold">Basic Information</h3>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="assetTag">Asset Tag</Label>
@@ -223,7 +288,9 @@ export default function DeviceForm() {
                       value={formData.assetTag}
                       onChange={handleChange}
                       placeholder="e.g., AST-2024-001"
+                      className="bg-white"
                     />
+                    <p className="text-xs text-muted-foreground">Auto-generated if left empty</p>
                   </div>
 
                   <div className="space-y-2">
@@ -234,7 +301,7 @@ export default function DeviceForm() {
                       value={formData.deviceName}
                       onChange={handleChange}
                       placeholder="e.g., Core Switch 01"
-                      className={errors.deviceName ? 'border-red-500' : ''}
+                      className={`bg-white ${errors.deviceName ? 'border-red-500' : ''}`}
                     />
                     {errors.deviceName && (
                       <p className="text-sm text-red-500">{errors.deviceName}</p>
@@ -306,8 +373,11 @@ export default function DeviceForm() {
               </div>
 
               {/* Network Information */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Network Information</h3>
+              <div className="border-b pb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-1 bg-primary rounded"></div>
+                  <h3 className="text-lg font-semibold">Network Information</h3>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="macAddress">MAC Address</Label>
@@ -334,8 +404,11 @@ export default function DeviceForm() {
               </div>
 
               {/* Purchase & Bill Details */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Purchase & Bill Details</h3>
+              <div className="border-b pb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-1 bg-primary rounded"></div>
+                  <h3 className="text-lg font-semibold">Purchase & Bill Details</h3>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="purchaseDate">Purchase Date *</Label>
@@ -457,9 +530,12 @@ export default function DeviceForm() {
               </div>
 
               {/* Warranty Information */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Warranty Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border-b pb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-1 bg-primary rounded"></div>
+                  <h3 className="text-lg font-semibold">Warranty Information</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="warrantyStart">Warranty Start Date</Label>
                     <Input
@@ -472,21 +548,65 @@ export default function DeviceForm() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="warrantyEnd">Warranty End Date</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="warrantyEnd">Warranty End Date</Label>
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Checkbox
+                          checked={noWarrantyExpiry}
+                          onCheckedChange={(value) => {
+                            const checked = Boolean(value);
+                            setNoWarrantyExpiry(checked);
+                            if (checked) {
+                              setFormData(prev => ({ ...prev, warrantyEnd: '' }));
+                              setWarrantyYears('');
+                            }
+                          }}
+                        />
+                        No Expiry
+                      </label>
+                    </div>
                     <Input
                       id="warrantyEnd"
                       name="warrantyEnd"
                       type="date"
                       value={formData.warrantyEnd}
                       onChange={handleChange}
+                      disabled={noWarrantyExpiry}
                     />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="warrantyYears">Add Years</Label>
+                    <Select
+                      value={warrantyYears}
+                      onValueChange={(value) => {
+                        setWarrantyYears(value);
+                        applyWarrantyYears(value);
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select years" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="manual">Manual Entry</SelectItem>
+                        <SelectItem value="1">1 Year</SelectItem>
+                        <SelectItem value="2">2 Years</SelectItem>
+                        <SelectItem value="3">3 Years</SelectItem>
+                        <SelectItem value="5">5 Years</SelectItem>
+                        <SelectItem value="10">10 Years</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Uses warranty start, purchase, or arrival date.</p>
                   </div>
                 </div>
               </div>
 
               {/* Assignment Information */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Assignment Information</h3>
+              <div className="border-b pb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-1 bg-primary rounded"></div>
+                  <h3 className="text-lg font-semibold">Assignment Information</h3>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="status">Status</Label>
@@ -509,7 +629,7 @@ export default function DeviceForm() {
                         <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Not Assigned</SelectItem>
+                        <SelectItem value="none">Not Assigned</SelectItem>
                         {mockDepartments.map(dept => (
                           <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
                         ))}
@@ -524,7 +644,7 @@ export default function DeviceForm() {
                         <SelectValue placeholder="Select location" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">Not Assigned</SelectItem>
+                        <SelectItem value="none">Not Assigned</SelectItem>
                         {mockLocations.map(loc => (
                           <SelectItem key={loc.id} value={loc.id}>
                             {loc.building} - {loc.floor} - {loc.room}
@@ -544,27 +664,15 @@ export default function DeviceForm() {
                       placeholder="User ID"
                     />
                   </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="managerId">Device Manager</Label>
-                    <Select value={formData.managerId} onValueChange={(value) => handleSelectChange('managerId', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select manager" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="">Not Assigned</SelectItem>
-                        {mockUsers.filter(u => u.role === 'MANAGER' || u.role === 'SUPER_ADMIN').map(user => (
-                          <SelectItem key={user.id} value={user.id}>{user.name} ({user.role})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
               </div>
 
               {/* Features */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Features</h3>
+              <div className="border-b pb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-1 bg-primary rounded"></div>
+                  <h3 className="text-lg font-semibold">Features</h3>
+                </div>
                 <div className="space-y-4">
                   <div className="flex gap-2">
                     <Input
@@ -605,33 +713,47 @@ export default function DeviceForm() {
               </div>
 
               {/* Notes */}
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleChange}
-                  placeholder="Additional notes or remarks about the device"
-                  rows={4}
-                />
+              <div className="border-b pb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-1 bg-primary rounded"></div>
+                  <h3 className="text-lg font-semibold">Additional Notes</h3>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Textarea
+                    id="notes"
+                    name="notes"
+                    value={formData.notes}
+                    onChange={handleChange}
+                    placeholder="Additional notes or remarks about the device"
+                    rows={4}
+                    className="bg-white"
+                  />
+                </div>
               </div>
 
               {/* Form Actions */}
-              <div className="flex gap-4 pt-6 border-t">
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                >
-                  {isLoading ? 'Saving...' : id ? 'Update Device' : 'Create Device'}
-                </Button>
+              <div className="flex gap-3 pt-6 justify-between">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => navigate('/inventory')}
                   disabled={isLoading}
+                  className="px-8"
                 >
                   Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-8 bg-primary hover:bg-primary/90"
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="animate-spin mr-2">⏳</span>
+                      Saving...
+                    </>
+                  ) : id ? 'Update Device' : 'Create Device'}
                 </Button>
               </div>
             </form>

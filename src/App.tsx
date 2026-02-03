@@ -10,6 +10,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Inventory from "./pages/Inventory";
 import DeviceDetails from "./pages/DeviceDetails";
+import DevicePreview from "./pages/DevicePreview";
 import DeviceForm from "./pages/DeviceForm";
 import DeviceManagement from "./pages/DeviceManagement";
 import Departments from "./pages/Departments";
@@ -23,7 +24,8 @@ import Assignments from "./pages/Assignments";
 import AssignmentDetails from "./pages/AssignmentDetails";
 import AssignmentForm from "./pages/AssignmentForm";
 import AssignmentManagement from "./pages/AssignmentManagement";
-import ManagerDashboard from "./pages/ManagerDashboard";
+import AssignmentStatusUpdate from "./pages/AssignmentStatusUpdate";
+import RequestDevice from "./pages/RequestDevice";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,22 +49,15 @@ const App = () => (
               }
             >
               <Route path="/dashboard" element={<Dashboard />} />
-              <Route
-                path="/manager-dashboard"
-                element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
-                    <ManagerDashboard />
-                  </ProtectedRoute>
-                }
-              />
               <Route path="/inventory" element={<Inventory />} />
               <Route path="/inventory/new" element={<DeviceForm />} />
+              <Route path="/inventory/:id/preview" element={<DevicePreview />} />
               <Route path="/inventory/:id" element={<DeviceDetails />} />
               <Route path="/inventory/:id/edit" element={<DeviceForm />} />
               <Route
                 path="/device-management"
                 element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGER']}>
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
                     <DeviceManagement />
                   </ProtectedRoute>
                 }
@@ -110,7 +105,7 @@ const App = () => (
               <Route
                 path="/assignment-management"
                 element={
-                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MANAGER', 'IT_STAFF']}>
+                  <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
                     <AssignmentManagement />
                   </ProtectedRoute>
                 }
@@ -120,6 +115,22 @@ const App = () => (
                 element={
                   <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'IT_STAFF']}>
                     <AssignmentForm />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/request-device"
+                element={
+                  <ProtectedRoute allowedRoles={['IT_STAFF']}>
+                    <RequestDevice />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/assignment-status"
+                element={
+                  <ProtectedRoute allowedRoles={['IT_STAFF']}>
+                    <AssignmentStatusUpdate />
                   </ProtectedRoute>
                 }
               />

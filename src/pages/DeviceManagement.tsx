@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { mockDevices, mockUsers } from '@/data/mockData';
+import { mockUsers } from '@/data/mockData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,21 +24,20 @@ import { AlertCircle, Edit, Delete, Plus, Check } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { Device } from '@/types';
+import { getAssignments, getAvailableQuantity, getDevices, saveDevices } from '@/data/store';
 
 export default function DeviceManagement() {
   const { user } = useAuth();
-  const [devices, setDevices] = useState<Device[]>(mockDevices);
+  const [devices, setDevices] = useState<Device[]>(getDevices());
+  const assignments = getAssignments();
   const [selectedDevices, setSelectedDevices] = useState<Set<string>>(new Set());
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [bulkEditData, setBulkEditData] = useState({
     status: '',
-    managerId: '',
   });
 
-  const canManage = ['SUPER_ADMIN', 'MANAGER'].includes(user?.role || '');
+  const canManage = ['SUPER_ADMIN'].includes(user?.role || '');
   const isSuperAdmin = user?.role === 'SUPER_ADMIN';
-
-  const managers = mockUsers.filter(u => u.role === 'MANAGER');
 
   const handleSelectDevice = (deviceId: string) => {
     const newSelected = new Set(selectedDevices);
@@ -59,7 +58,7 @@ export default function DeviceManagement() {
   };
 
   const handleBulkEdit = () => {
-    if (!bulkEditData.status && !bulkEditData.managerId) {
+    if (!bulkEditData.status) {
       return;
     }
 
@@ -68,7 +67,6 @@ export default function DeviceManagement() {
         return {
           ...device,
           status: bulkEditData.status ? (bulkEditData.status as any) : device.status,
-          managerId: bulkEditData.managerId || device.managerId,
           updatedAt: new Date().toISOString().split('T')[0],
         };
       }
@@ -76,18 +74,16 @@ export default function DeviceManagement() {
     });
 
     setDevices(updatedDevices);
+    saveDevices(updatedDevices);
     setBulkEditOpen(false);
-    setBulkEditData({ status: '', managerId: '' });
+    setBulkEditData({ status: '' });
     setSelectedDevices(new Set());
   };
 
   const handleDeleteDevice = (deviceId: string) => {
-    setDevices(devices.filter(d => d.id !== deviceId));
-  };
-
-  const getManagerName = (managerId?: string) => {
-    if (!managerId) return '—';
-    return managers.find(m => m.id === managerId)?.name || '—';
+    const updated = devices.filter(d => d.id !== deviceId);
+    setDevices(updated);
+    saveDevices(updated);
   };
 
   return (
@@ -160,8 +156,8 @@ export default function DeviceManagement() {
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Device</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Asset Tag</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Status</th>
-                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Manager</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Quantity</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Available</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Cost</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Actions</th>
                 </tr>
@@ -185,8 +181,12 @@ export default function DeviceManagement() {
                     <td className="px-6 py-4">
                       <StatusBadge status={device.status} />
                     </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">{getManagerName(device.managerId)}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">{device.quantity}</td>
+                    <td className="px-6 py-4 text-sm">
+                      {getAvailableQuantity(device, assignments) > 0
+                        ? getAvailableQuantity(device, assignments)
+                        : 'No stock'}
+                    </td>
                     <td className="px-6 py-4 text-sm font-medium">${device.cost.toLocaleString()}</td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
@@ -246,22 +246,6 @@ export default function DeviceManagement() {
                   <SelectItem value="INSTALLED">Installed</SelectItem>
                   <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
                   <SelectItem value="SCRAPPED">Scrapped</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="bulk-manager">Assign to Manager</Label>
-              <Select value={bulkEditData.managerId} onValueChange={(value) => setBulkEditData(prev => ({ ...prev, managerId: value }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select manager" />
-                </SelectTrigger>
-                <SelectContent>
-                  {managers.map(manager => (
-                    <SelectItem key={manager.id} value={manager.id}>
-                      {manager.name}
-                    </SelectItem>
-                  ))}
                 </SelectContent>
               </Select>
             </div>

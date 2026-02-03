@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { mockAssignments, mockDevices, mockDepartments, mockLocations, mockAuditLogs } from '@/data/mockData';
+import { mockDepartments, mockLocations, mockAuditLogs } from '@/data/mockData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { User as UserType } from '@/types';
+import { getAssignments, getDevices } from '@/data/store';
 
 // Mock users for display
 const mockUsers: UserType[] = [
@@ -32,8 +33,10 @@ export default function AssignmentDetails() {
   const navigate = useNavigate();
   const { user } = useAuth();
   
-  const assignment = mockAssignments.find(a => a.id === id);
-  const device = mockDevices.find(d => d.id === assignment?.deviceId);
+  const assignments = getAssignments();
+  const devices = getDevices();
+  const assignment = assignments.find(a => a.id === id);
+  const device = devices.find(d => d.id === assignment?.deviceId);
   const department = mockDepartments.find(d => d.id === assignment?.departmentId);
   const location = mockLocations.find(l => l.id === assignment?.locationId);
   const requestedBy = mockUsers.find(u => u.id === assignment?.requestedBy);
@@ -118,6 +121,10 @@ export default function AssignmentDetails() {
                         <p className="text-sm font-mono">{device.assetTag}</p>
                       </div>
                       <div>
+                        <p className="text-xs text-muted-foreground">Quantity</p>
+                        <p className="text-sm font-medium">{assignment.quantity ?? 1}</p>
+                      </div>
+                      <div>
                         <p className="text-xs text-muted-foreground">Category</p>
                         <p className="text-sm">{device.category}</p>
                       </div>
@@ -175,6 +182,32 @@ export default function AssignmentDetails() {
               )}
             </CardContent>
           </Card>
+
+          {/* Request Information */}
+          {(assignment.reason || assignment.notes) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <FileText className="h-5 w-5 text-primary" />
+                  Request Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {assignment.reason && (
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Request Reason</p>
+                    <p className="text-sm font-medium">{assignment.reason.replace(/_/g, ' ')}</p>
+                  </div>
+                )}
+                {assignment.notes && (
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Request Notes</p>
+                    <p className="text-sm bg-muted/50 p-3 rounded-lg">{assignment.notes}</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Remarks */}
           {assignment.remarks && (

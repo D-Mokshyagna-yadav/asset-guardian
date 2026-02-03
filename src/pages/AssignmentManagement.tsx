@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { mockAssignments, mockDevices, mockUsers, mockDepartments, mockLocations } from '@/data/mockData';
+import { mockUsers, mockDepartments, mockLocations } from '@/data/mockData';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,28 +19,30 @@ import {
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, Check, X, Eye, MessageSquare } from 'lucide-react';
+import { AlertCircle, Check, X, Eye, MessageSquare, CheckCircle2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { Assignment, AssignmentStatus } from '@/types';
+import { getAssignments, getDevices, saveAssignments, upsertDevice } from '@/data/store';
 
 export default function AssignmentManagement() {
   const { user } = useAuth();
-  const [assignments, setAssignments] = useState(mockAssignments);
+  const [assignments, setAssignments] = useState(getAssignments());
+  const devices = getDevices();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [approvalDialog, setApprovalDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
 
-  const canApprove = ['SUPER_ADMIN', 'MANAGER', 'IT_STAFF'].includes(user?.role || '');
+  const canApprove = user?.role === 'SUPER_ADMIN';
 
   const filteredAssignments = filterStatus === 'all'
     ? assignments
     : assignments.filter(a => a.status === filterStatus);
 
   const getDeviceName = (id: string) => {
-    return mockDevices.find(d => d.id === id)?.deviceName || 'Unknown';
+    return devices.find(d => d.id === id)?.deviceName || 'Unknown';
   };
 
   const getDepartmentName = (id: string) => {
@@ -70,7 +72,21 @@ export default function AssignmentManagement() {
       return a;
     });
 
+    // Update the device with department and location info
+    const devices = getDevices();
+    const deviceToUpdate = devices.find(d => d.id === selectedAssignment.deviceId);
+    if (deviceToUpdate) {
+      const updatedDevice = {
+        ...deviceToUpdate,
+        departmentId: selectedAssignment.departmentId,
+        locationId: selectedAssignment.locationId,
+        updatedAt: new Date().toISOString().split('T')[0],
+      };
+      upsertDevice(updatedDevice);
+    }
+
     setAssignments(updatedAssignments);
+    saveAssignments(updatedAssignments);
     setApprovalDialog(false);
     setSelectedAssignment(null);
     setActionType(null);
@@ -92,13 +108,14 @@ export default function AssignmentManagement() {
     });
 
     setAssignments(updatedAssignments);
+    saveAssignments(updatedAssignments);
     setApprovalDialog(false);
     setSelectedAssignment(null);
     setActionType(null);
     setRejectionReason('');
   };
 
-  const pendingCount = assignments.filter(a => a.status === 'PENDING').length;
+  const pendingCount = assignments.filter(a => a.status === 'REQUESTED').length;
   const approvedCount = assignments.filter(a => a.status === 'APPROVED').length;
   const rejectedCount = assignments.filter(a => a.status === 'REJECTED').length;
 
@@ -174,6 +191,7 @@ export default function AssignmentManagement() {
               <thead className="bg-muted/50 border-b border-border">
                 <tr>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Device</th>
+                  <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Qty</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Department</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Location</th>
                   <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Requested By</th>
@@ -190,6 +208,7 @@ export default function AssignmentManagement() {
                         <p className="text-sm font-medium">{getDeviceName(assignment.deviceId)}</p>
                       </div>
                     </td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">{assignment.quantity ?? 1}</td>
                     <td className="px-6 py-4 text-sm text-muted-foreground">
                       {getDepartmentName(assignment.departmentId)}
                     </td>
@@ -216,7 +235,7 @@ export default function AssignmentManagement() {
                           <Eye className="h-4 w-4" />
                         </Button>
 
-                        {canApprove && assignment.status === 'PENDING' && (
+                        {canApprove && assignment.status === 'REQUESTED' && (
                           <>
                             <Button
                               size="sm"
@@ -315,13 +334,25 @@ export default function AssignmentManagement() {
           <div className="space-y-4 py-4">
             {selectedAssignment && (
               <>
-                <div className="p-4 bg-muted/50 rounded-lg">
-                  <p className="text-sm">
-                    <span className="font-semibold">Device:</span> {getDeviceName(selectedAssignment.deviceId)}
-                  </p>
-                  <p className="text-sm">
-                    <span className="font-semibold">Department:</span> {getDepartmentName(selectedAssignment.departmentId)}
-                  </p>
+                <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Device</p>
+                    <p className="text-sm font-semibold">{getDeviceName(selectedAssignment.deviceId)}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Department</p>
+                      <p className="text-sm font-semibold">{getDepartmentName(selectedAssignment.departmentId)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wider">Location</p>
+                      <p className="text-sm font-semibold">{getLocationName(selectedAssignment.locationId)}</p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Quantity</p>
+                    <p className="text-sm font-semibold">{selectedAssignment.quantity ?? 1} unit(s)</p>
+                  </div>
                 </div>
 
                 {actionType === 'reject' && (
@@ -338,10 +369,10 @@ export default function AssignmentManagement() {
                 )}
 
                 {actionType === 'approve' && (
-                  <Alert>
-                    <Check className="h-4 w-4" />
-                    <AlertDescription>
-                      This assignment will be approved and the device will be assigned to the department.
+                  <Alert className="border-emerald-200 bg-emerald-50">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                    <AlertDescription className="text-emerald-800">
+                      This assignment will be <span className="font-semibold">approved</span>. The device will be assigned to <span className="font-semibold">{getDepartmentName(selectedAssignment.departmentId)}</span> at <span className="font-semibold">{getLocationName(selectedAssignment.locationId)}</span>.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -350,7 +381,7 @@ export default function AssignmentManagement() {
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
                     <AlertDescription>
-                      This assignment will be rejected and the requester will be notified.
+                      This assignment will be <span className="font-semibold">rejected</span> and the requester will be notified.
                     </AlertDescription>
                   </Alert>
                 )}
