@@ -1,12 +1,14 @@
+import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { DeviceStatus, AssignmentStatus } from '@/types';
+import { configurationApi, type StatusStyleConfig } from '@/lib/api';
 
 interface StatusBadgeProps {
   status: DeviceStatus | AssignmentStatus;
   className?: string;
 }
 
-const statusStyles: Record<string, string> = {
+const DEFAULT_STATUS_STYLES: Record<string, string> = {
   IN_STOCK: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   ISSUED: 'bg-blue-100 text-blue-800 border-blue-200',
   INSTALLED: 'bg-teal-100 text-teal-800 border-teal-200',
@@ -20,6 +22,28 @@ const statusStyles: Record<string, string> = {
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
+  const [statusStyles, setStatusStyles] = useState<Record<string, string>>(DEFAULT_STATUS_STYLES);
+
+  useEffect(() => {
+    const fetchStatusStyles = async () => {
+      try {
+        const response = await configurationApi.getStatusStyles();
+        const styles = response.data?.data || [];
+        const styleMap: Record<string, string> = {};
+        styles.forEach((style: StatusStyleConfig) => {
+          styleMap[style.status] = style.classes;
+        });
+        setStatusStyles(styleMap);
+      } catch (error) {
+        console.error('Error fetching status styles:', error);
+        // Fall back to defaults on error
+        setStatusStyles(DEFAULT_STATUS_STYLES);
+      }
+    };
+
+    fetchStatusStyles();
+  }, []);
+
   const formattedStatus = status.replace(/_/g, ' ');
   
   return (

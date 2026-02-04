@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { configurationApi, type RoleColorConfig } from '@/lib/api';
 import {
   LayoutDashboard,
   Monitor,
@@ -16,6 +18,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+const DEFAULT_ROLE_COLORS: Record<string, { color: string; label: string }> = {
+  'SUPER_ADMIN': { color: 'bg-red-500/20 text-red-300', label: 'Super Admin' },
+  'IT_STAFF': { color: 'bg-blue-500/20 text-blue-300', label: 'IT Staff' },
+  'DEPARTMENT_INCHARGE': { color: 'bg-amber-500/20 text-amber-300', label: 'Department In-charge' },
+};
+
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'] },
   { name: 'Inventory', href: '/inventory', icon: Monitor, roles: ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'] },
@@ -31,26 +39,37 @@ const navigation = [
 export function Sidebar() {
   const location = useLocation();
   const { user, logout } = useAuth();
+  const [roleColors, setRoleColors] = useState<Record<string, { color: string; label: string }>>(DEFAULT_ROLE_COLORS);
+
+  useEffect(() => {
+    const fetchRoleColors = async () => {
+      try {
+        const response = await configurationApi.getRoleColors();
+        const colors = response.data?.data || [];
+        const colorMap: Record<string, { color: string; label: string }> = {};
+        colors.forEach((config: RoleColorConfig) => {
+          colorMap[config.role] = { color: config.badgeColor, label: config.displayLabel };
+        });
+        setRoleColors(colorMap);
+      } catch (error) {
+        console.error('Error fetching role colors:', error);
+        setRoleColors(DEFAULT_ROLE_COLORS);
+      }
+    };
+
+    fetchRoleColors();
+  }, []);
 
   const filteredNavigation = navigation.filter(
     item => user && item.roles.includes(user.role)
   );
 
   const getRoleBadgeColor = (role: string) => {
-    switch (role) {
-      case 'SUPER_ADMIN':
-        return 'bg-red-500/20 text-red-300';
-      case 'IT_STAFF':
-        return 'bg-blue-500/20 text-blue-300';
-      case 'DEPARTMENT_INCHARGE':
-        return 'bg-amber-500/20 text-amber-300';
-      default:
-        return 'bg-gray-500/20 text-gray-300';
-    }
+    return roleColors[role]?.color || 'bg-gray-500/20 text-gray-300';
   };
 
   const formatRole = (role: string) => {
-    return role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return roleColors[role]?.label || role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
   return (

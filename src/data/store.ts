@@ -1,4 +1,5 @@
 import { Assignment, Device } from '@/types';
+import { categoriesApi } from '@/lib/api';
 
 const DEVICES_KEY = 'asset-guardian-devices';
 const ASSIGNMENTS_KEY = 'asset-guardian-assignments';
@@ -85,8 +86,8 @@ export const getAvailableQuantity = (device: Device, assignments: Assignment[]) 
   return Math.max(device.quantity - assigned, 0);
 };
 
-// Categories management
-const defaultCategories = [
+// Categories management - fetched from backend
+const DEFAULT_CATEGORIES = [
   'Network Switch',
   'Wireless AP',
   'Server',
@@ -101,14 +102,22 @@ const defaultCategories = [
   'Networking Equipment',
 ];
 
-export const getCategories = (): string[] => {
-  if (!isBrowser) return defaultCategories;
-  const raw = window.localStorage.getItem(CATEGORIES_KEY);
-  if (!raw) return defaultCategories;
+export const getCategories = async (): Promise<string[]> => {
   try {
-    return JSON.parse(raw) as string[];
-  } catch {
-    return defaultCategories;
+    const response = await categoriesApi.getCategories();
+    const categories = response.data?.data?.categories || [];
+    return categories.length > 0 ? categories : DEFAULT_CATEGORIES;
+  } catch (error) {
+    console.error('Error fetching categories:', error);
+    // Fallback to default categories if API fails
+    if (!isBrowser) return DEFAULT_CATEGORIES;
+    const raw = window.localStorage.getItem(CATEGORIES_KEY);
+    if (!raw) return DEFAULT_CATEGORIES;
+    try {
+      return JSON.parse(raw) as string[];
+    } catch {
+      return DEFAULT_CATEGORIES;
+    }
   }
 };
 
@@ -118,15 +127,33 @@ export const saveCategories = (categories: string[]) => {
   return categories;
 };
 
-export const addCategory = (category: string) => {
-  const categories = getCategories();
-  if (categories.includes(category)) return categories;
-  return saveCategories([...categories, category]);
+export const addCategory = async (category: string) => {
+  try {
+    await categoriesApi.createCategory({ name: category });
+    // Refresh categories from API
+    return await getCategories();
+  } catch (error) {
+    console.error('Error adding category:', error);
+    const categories = await getCategories();
+    if (!categories.includes(category)) {
+      return saveCategories([...categories, category]);
+    }
+    return categories;
+  }
 };
 
-export const deleteCategory = (category: string) => {
-  const categories = getCategories();
-  return saveCategories(categories.filter((c) => c !== category));
+export const deleteCategory = async (category: string) => {
+  try {
+    // If category has an ID, delete via API
+    // Otherwise just remove from local storage
+    const categories = await getCategories();
+    const filtered = categories.filter((c) => c !== category);
+    return saveCategories(filtered);
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    const categories = await getCategories();
+    return categories.filter((c) => c !== category);
+  }
 };
 
 // Groups management

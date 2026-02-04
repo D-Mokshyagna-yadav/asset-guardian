@@ -7,26 +7,24 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertCircle, ArrowLeft, Save } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { mockDepartments } from '@/data/mockData';
-import { User, UserRole } from '@/types';
+import { departmentsApi, usersApi, configurationApi, type UserRoleConfig } from '@/lib/api';
+import { Department, User, UserRole } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 
-const USER_ROLES: { value: UserRole; label: string }[] = [
+const DEFAULT_USER_ROLES: UserRoleConfig[] = [
   { value: 'SUPER_ADMIN', label: 'Super Admin' },
   { value: 'IT_STAFF', label: 'IT Staff' },
   { value: 'DEPARTMENT_INCHARGE', label: 'Department In-charge' },
-];
-
-// Mock users for validation (in real app, this would come from API)
-const mockUsers: User[] = [
-  { id: '1', name: 'John Administrator', email: 'admin@college.edu', role: 'SUPER_ADMIN', isActive: true, createdAt: '2024-01-01', updatedAt: '2024-01-01' },
-  { id: '2', name: 'Sarah Tech', email: 'staff@college.edu', role: 'IT_STAFF', isActive: true, createdAt: '2024-01-15', updatedAt: '2024-01-15' },
 ];
 
 export default function UserForm() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [userRoles, setUserRoles] = useState<UserRoleConfig[]>(DEFAULT_USER_ROLES);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [existingUser, setExistingUser] = useState<User | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
 
@@ -34,6 +32,34 @@ export default function UserForm() {
   const isAdmin = user?.role === 'SUPER_ADMIN';
   const canCreateEditUser = isAdmin;
   
+  // Load departments and existing user if editing
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const [deptRes, rolesRes, usersRes] = await Promise.all([
+          departmentsApi.getDepartments({ limit: 100 }),
+          configurationApi.getUserRoles().catch(() => ({ data: DEFAULT_USER_ROLES })),
+          usersApi.getUsers({ limit: 1000 }),
+        ]);
+        
+        setDepartments(deptRes.data.data);
+        setUserRoles(rolesRes.data?.data || DEFAULT_USER_ROLES);
+        setAllUsers(usersRes.data.data);
+
+        if (id) {
+          const userRes = await usersApi.getUserById(id);
+          setExistingUser(userRes.data.data?.user || null);
+        }
+      } catch (error) {
+        console.error('Failed to load data:', error);
+        // Fallback to defaults on error
+        setUserRoles(DEFAULT_USER_ROLES);
+      }
+    };
+
+    loadData();
+  }, [id]);
+
   // Redirect if user doesn't have permission
   useEffect(() => {
     if (!canCreateEditUser) {
@@ -41,8 +67,6 @@ export default function UserForm() {
     }
   }, [canCreateEditUser, navigate]);
 
-  // Find existing user if editing
-  const existingUser = id ? mockUsers.find(u => u.id === id) : null;
   const isEditing = !!existingUser;
 
   const [formData, setFormData] = useState({
@@ -54,7 +78,7 @@ export default function UserForm() {
   });
 
   // Check for single admin restriction
-  const existingAdmins = mockUsers.filter(u => u.role === 'SUPER_ADMIN' && u.id !== id);
+  const existingAdmins = allUsers.filter(u => u.role === 'SUPER_ADMIN' && u._id !== id);
   const hasMaxAdmins = existingAdmins.length >= 1;
 
   const validateForm = () => {
@@ -68,7 +92,7 @@ export default function UserForm() {
     }
 
     // Check for duplicate email (exclude current user if editing)
-    const emailExists = mockUsers.some(u => u.email === formData.email && u.id !== id);
+    const emailExists = allUsers.some(u => u.email === formData.email && u._id !== id);
     if (emailExists) {
       newErrors.email = 'Email address already exists';
     }
@@ -239,7 +263,7 @@ export default function UserForm() {
                     <SelectValue placeholder="Select role" />
                   </SelectTrigger>
                   <SelectContent>
-                    {USER_ROLES.map((role) => (
+                    {userRoles.map((role) => (
                       <SelectItem 
                         key={role.value} 
                         value={role.value}
@@ -270,7 +294,7 @@ export default function UserForm() {
                       <SelectValue placeholder="Select department" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockDepartments.map((dept) => (
+                      {departments.map((dept) => (
                         <SelectItem key={dept.id} value={dept.id}>
                           {dept.name}
                         </SelectItem>

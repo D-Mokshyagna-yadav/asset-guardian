@@ -270,4 +270,44 @@ export const auditLogsApi = {
     api.post<ApiResponse>('/audit-logs/cleanup/old-logs', { daysOld }),
 };
 
+// Categories API
+export const categoriesApi = {
+  getCategories: () => api.get<ApiResponse<{ categories: string[] }>>('/categories'),
+  getCategoryById: (id: string) => api.get<ApiResponse>(`/categories/${id}`),
+  createCategory: (data: { name: string; description?: string }) =>
+    api.post<ApiResponse>('/categories', data),
+  updateCategory: (id: string, data: { name: string; description?: string }) =>
+    api.put<ApiResponse>(`/categories/${id}`, data),
+  deleteCategory: (id: string) => api.delete<ApiResponse>(`/categories/${id}`),
+};
+
+// Configuration API
+export interface UserRoleConfig {
+  value: string;
+  label: string;
+  description?: string;
+}
+
+export interface StatusStyleConfig {
+  status: string;
+  classes: string;
+  label?: string;
+}
+
+export interface RoleColorConfig {
+  role: string;
+  badgeColor: string;
+  displayLabel: string;
+}
+
+export const configurationApi = {
+  getConfiguration: () => api.get<ApiResponse>('/configuration'),
+  getConfigByKey: (key: string) => api.get<ApiResponse>(`/configuration/${key}`),
+  getUserRoles: () => api.get<ApiResponse<UserRoleConfig[]>>('/configuration/enum/user-roles'),
+  getStatusStyles: () => api.get<ApiResponse<StatusStyleConfig[]>>('/configuration/enum/status-styles'),
+  getRoleColors: () => api.get<ApiResponse<RoleColorConfig[]>>('/configuration/enum/role-colors'),
+  updateConfiguration: (key: string, data: unknown) =>
+    api.put<ApiResponse>(`/configuration/${key}`, data),
+};
+
 export default api;

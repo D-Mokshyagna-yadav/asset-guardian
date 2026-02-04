@@ -4,3 +4,5 @@ export { Department, IDepartment } from './Department';
 export { AuditLog, IAuditLog } from './AuditLog';
 export { Assignment, IAssignment, AssignmentStatus, RequestReason } from './Assignment';
 export { Location, ILocation } from './Location';
+export { Category, ICategory } from './Category';
+export { Configuration, IConfiguration } from './Configuration';

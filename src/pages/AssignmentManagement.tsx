@@ -1,7 +1,5 @@
-import { useState } from 'react';
-import { departmentsApi, locationsApi, usersApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
-import { User, Department, Location } from '@/types';
+import { departmentsApi, locationsApi, usersApi } from '@/lib/api';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,6 +30,9 @@ export default function AssignmentManagement() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [assignments, setAssignments] = useState(getAssignments());
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const devices = getDevices();
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
@@ -39,6 +40,25 @@ export default function AssignmentManagement() {
   const [approvalDialog, setApprovalDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
+
+  useEffect(() => {
+    const loadLookupData = async () => {
+      try {
+        const [deptRes, locRes, usersRes] = await Promise.all([
+          departmentsApi.getDepartments({ limit: 100 }),
+          locationsApi.getLocations({ limit: 100 }),
+          usersApi.getUsers({ limit: 100 }),
+        ]);
+        setDepartments(deptRes.data.data);
+        setLocations(locRes.data.data);
+        setUsers(usersRes.data.data);
+      } catch (error) {
+        console.error('Failed to load lookup data:', error);
+      }
+    };
+
+    loadLookupData();
+  }, []);
 
   const canApprove = user?.role === 'SUPER_ADMIN';
 
@@ -58,20 +78,20 @@ export default function AssignmentManagement() {
 
   const getDepartmentName = (id: string | Department) => {
     if (typeof id === 'object') return id?.name || 'Unknown';
-    return mockDepartments.find(d => d.id === id)?.name || 'Unknown';
+    return departments.find(d => d.id === id)?.name || 'Unknown';
   };
 
   const getLocationName = (id: string | Location) => {
     if (typeof id === 'object') {
       return id ? `${id.building}, ${id.room}` : 'Unknown';
     }
-    const loc = mockLocations.find(l => l.id === id);
+    const loc = locations.find(l => l.id === id);
     return loc ? `${loc.building}, ${loc.room}` : 'Unknown';
   };
 
   const getRequestedByName = (id: string | User) => {
     if (typeof id === 'object') return id?.name || 'Unknown';
-    return mockUsers.find(u => u.id === id)?.name || 'Unknown';
+    return users.find(u => u.id === id)?.name || 'Unknown';
   };
 
   const handleApprove = () => {

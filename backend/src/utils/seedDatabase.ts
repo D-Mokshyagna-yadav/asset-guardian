@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import { config } from '../config';
-import { User, Department, Location, Device, Assignment, AuditLog } from '../models';
+import { User, Department, Location, Device, Assignment, AuditLog, Category, Configuration } from '../models';
 
 const connectDB = async () => {
   await mongoose.connect(config.mongodb.uri);
@@ -19,6 +19,125 @@ const seedData = async () => {
     await Device.deleteMany({});
     await Assignment.deleteMany({});
     await AuditLog.deleteMany({});
+    await Category.deleteMany({});
+    await Configuration.deleteMany({});
+
+    // Create categories
+    console.log('Creating categories...');
+    const categories = await Category.create([
+      { name: 'Network Switch', description: 'Network switching equipment' },
+      { name: 'Wireless AP', description: 'Wireless access points' },
+      { name: 'Server', description: 'Server hardware' },
+      { name: 'Printer', description: 'Printer devices' },
+      { name: 'Router', description: 'Network routing equipment' },
+      { name: 'Firewall', description: 'Firewall appliances' },
+      { name: 'Storage', description: 'Storage devices and systems' },
+      { name: 'Desktop', description: 'Desktop computers' },
+      { name: 'Laptop', description: 'Laptop computers' },
+      { name: 'Tablet', description: 'Tablet devices' },
+      { name: 'Mobile', description: 'Mobile phones' },
+      { name: 'Networking Equipment', description: 'Other networking equipment' },
+    ]);
+
+    // Create configuration
+    console.log('Creating configuration...');
+    await Configuration.create([
+      {
+        key: 'USER_ROLES',
+        userRoles: [
+          {
+            value: 'SUPER_ADMIN',
+            label: 'Super Admin',
+            description: 'Full system access and administration capabilities',
+          },
+          {
+            value: 'IT_STAFF',
+            label: 'IT Staff',
+            description: 'Device management and assignment capabilities',
+          },
+          {
+            value: 'DEPARTMENT_INCHARGE',
+            label: 'Department In-charge',
+            description: 'Department-level management capabilities',
+          },
+        ],
+      },
+      {
+        key: 'STATUS_STYLES',
+        statusStyles: [
+          {
+            status: 'IN_STOCK',
+            classes: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+            label: 'In Stock',
+          },
+          {
+            status: 'ISSUED',
+            classes: 'bg-blue-100 text-blue-800 border-blue-200',
+            label: 'Issued',
+          },
+          {
+            status: 'INSTALLED',
+            classes: 'bg-teal-100 text-teal-800 border-teal-200',
+            label: 'Installed',
+          },
+          {
+            status: 'MAINTENANCE',
+            classes: 'bg-amber-100 text-amber-800 border-amber-200',
+            label: 'Maintenance',
+          },
+          {
+            status: 'SCRAPPED',
+            classes: 'bg-slate-100 text-slate-600 border-slate-200',
+            label: 'Scrapped',
+          },
+          {
+            status: 'REQUESTED',
+            classes: 'bg-purple-100 text-purple-800 border-purple-200',
+            label: 'Requested',
+          },
+          {
+            status: 'PENDING',
+            classes: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+            label: 'Pending',
+          },
+          {
+            status: 'APPROVED',
+            classes: 'bg-green-100 text-green-800 border-green-200',
+            label: 'Approved',
+          },
+          {
+            status: 'COMPLETED',
+            classes: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+            label: 'Completed',
+          },
+          {
+            status: 'REJECTED',
+            classes: 'bg-red-100 text-red-800 border-red-200',
+            label: 'Rejected',
+          },
+        ],
+      },
+      {
+        key: 'ROLE_COLORS',
+        roleColors: [
+          {
+            role: 'SUPER_ADMIN',
+            badgeColor: 'bg-red-500/20 text-red-300',
+            displayLabel: 'Super Admin',
+          },
+          {
+            role: 'IT_STAFF',
+            badgeColor: 'bg-blue-500/20 text-blue-300',
+            displayLabel: 'IT Staff',
+          },
+          {
+            role: 'DEPARTMENT_INCHARGE',
+            badgeColor: 'bg-amber-500/20 text-amber-300',
+            displayLabel: 'Department In-charge',
+          },
+        ],
+      },
+    ]);
 
     // Create departments
     console.log('Creating departments...');

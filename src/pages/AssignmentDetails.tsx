@@ -1,5 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { mockDepartments, mockLocations, mockAuditLogs } from '@/data/mockData';
+import { useState, useEffect } from 'react';
+import { departmentsApi, locationsApi, auditLogsApi, usersApi } from '@/lib/api';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,30 +19,46 @@ import {
   Eye,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { User as UserType } from '@/types';
+import { User as UserType, Department, Location, AuditLog } from '@/types';
 import { getAssignments, getDevices } from '@/data/store';
-
-// Mock users for display
-const mockUsers: UserType[] = [
-  { id: '1', name: 'John Administrator', email: 'admin@college.edu', role: 'SUPER_ADMIN', isActive: true, createdAt: '2024-01-01' },
-  { id: '2', name: 'Sarah Tech', email: 'staff@college.edu', role: 'IT_STAFF', isActive: true, createdAt: '2024-01-15' },
-  { id: '3', name: 'Dr. Michael Dean', email: 'hod@college.edu', role: 'DEPARTMENT_INCHARGE', departmentId: 'dept-1', isActive: true, createdAt: '2024-02-01' },
-];
 
 export default function AssignmentDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+
+  useEffect(() => {
+    const loadLookupData = async () => {
+      try {
+        const [deptRes, locRes, usersRes] = await Promise.all([
+          departmentsApi.getDepartments({ limit: 100 }),
+          locationsApi.getLocations({ limit: 100 }),
+          usersApi.getUsers({ limit: 100 }),
+        ]);
+        setDepartments(deptRes.data.data);
+        setLocations(locRes.data.data);
+        setUsers(usersRes.data.data);
+      } catch (error) {
+        console.error('Failed to load lookup data:', error);
+      }
+    };
+
+    loadLookupData();
+  }, []);
+
   const assignments = getAssignments();
   const devices = getDevices();
   const assignment = assignments.find(a => a.id === id);
   const device = devices.find(d => d.id === assignment?.deviceId);
-  const department = mockDepartments.find(d => d.id === assignment?.departmentId);
-  const location = mockLocations.find(l => l.id === assignment?.locationId);
-  const requestedBy = mockUsers.find(u => u.id === assignment?.requestedBy);
-  const approvedBy = mockUsers.find(u => u.id === assignment?.approvedBy);
-  const assignmentLogs = mockAuditLogs.filter(log => log.entityId === id && log.entityType === 'Assignment');
+  const department = departments.find(d => d.id === assignment?.departmentId);
+  const location = locations.find(l => l.id === assignment?.locationId);
+  const requestedBy = users.find(u => u.id === assignment?.requestedBy);
+  const approvedBy = users.find(u => u.id === assignment?.approvedBy);
+  const assignmentLogs = auditLogs.filter(log => log.entityId === id && log.entityType === 'Assignment');
 
   const canApprove = user?.role === 'SUPER_ADMIN';
 
@@ -242,7 +259,7 @@ export default function AssignmentDetails() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm">
-                          <span className="font-medium">{log.performedBy}</span>
+                          <span className="font-medium">{typeof log.performedBy === 'object' ? log.performedBy?.name : log.performedBy}</span>
                           <span className="text-muted-foreground"> performed </span>
                           <span className="font-medium">{log.action.replace(/_/g, ' ')}</span>
                         </p>

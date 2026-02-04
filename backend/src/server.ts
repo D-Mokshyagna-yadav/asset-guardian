@@ -17,6 +17,8 @@ import departmentRoutes from './routes/departments';
 import assignmentRoutes from './routes/assignments';
 import auditLogRoutes from './routes/auditLogs';
 import locationRoutes from './routes/locations';
+import categoryRoutes from './routes/categories';
+import configurationRoutes from './routes/configuration';
 
 const app = express();
 
@@ -97,6 +99,8 @@ app.use('/api/departments', departmentRoutes);
 app.use('/api/assignments', assignmentRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/locations', locationRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/configuration', configurationRoutes);
 
 // 404 handler
 app.use(notFound);

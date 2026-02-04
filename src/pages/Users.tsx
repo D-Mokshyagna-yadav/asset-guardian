@@ -75,7 +75,6 @@ export default function Users() {
           </Link>
         )}
       </div>
-      </div>
 
       {/* Search */}
       <Card className="mb-6">

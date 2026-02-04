@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,8 +9,8 @@ import { AlertCircle, ArrowLeft, CheckCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { mockDepartments, mockLocations, mockUsers } from '@/data/mockData';
-import { Assignment, AssignmentStatus } from '@/types';
+import { departmentsApi, locationsApi, usersApi } from '@/lib/api';
+import { Assignment, AssignmentStatus, Department, Location, User } from '@/types';
 import { getAssignments, getDevices, saveAssignments } from '@/data/store';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -18,10 +18,32 @@ export default function AssignmentStatusUpdate() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [assignments, setAssignments] = useState(getAssignments());
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const devices = getDevices();
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    const loadLookupData = async () => {
+      try {
+        const [deptRes, locRes, usersRes] = await Promise.all([
+          departmentsApi.getDepartments({ limit: 100 }),
+          locationsApi.getLocations({ limit: 100 }),
+          usersApi.getUsers({ limit: 100 }),
+        ]);
+        setDepartments(deptRes.data.data);
+        setLocations(locRes.data.data);
+        setUsers(usersRes.data.data);
+      } catch (error) {
+        console.error('Failed to load lookup data:', error);
+      }
+    };
+
+    loadLookupData();
+  }, []);
 
   // Get IT_STAFF's approved assignments only
   const myApprovedAssignments = assignments.filter(
@@ -35,12 +57,16 @@ export default function AssignmentStatusUpdate() {
   const selectedAssignment = assignments.find(a => a.id === selectedAssignmentId);
   const device = selectedAssignment ? devices.find(d => d.id === selectedAssignment.deviceId) : null;
 
-  const getDepartmentName = (id: string) => {
-    return mockDepartments.find(d => d.id === id)?.name || 'Unknown';
+  const getDepartmentName = (id: string | Department) => {
+    if (typeof id === 'object') return id?.name || 'Unknown';
+    return departments.find(d => d.id === id)?.name || 'Unknown';
   };
 
-  const getLocationName = (id: string) => {
-    const loc = mockLocations.find(l => l.id === id);
+  const getLocationName = (id: string | Location) => {
+    if (typeof id === 'object') {
+      return id ? `${id.building}, ${id.room}` : 'Unknown';
+    }
+    const loc = locations.find(l => l.id === id);
     return loc ? `${loc.building}, ${loc.room}` : 'Unknown';
   };
 
