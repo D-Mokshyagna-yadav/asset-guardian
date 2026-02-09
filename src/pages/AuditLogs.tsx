@@ -17,6 +17,98 @@ import { Search, Filter, FileText, Download, Eye } from 'lucide-react';
 const actionTypes = ['All', 'CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE'];
 const entityTypes = ['All', 'Device', 'Assignment', 'Department'];
 
+// Human-readable field labels
+const fieldLabels: Record<string, string> = {
+  deviceName: 'Device Name',
+  assetTag: 'Asset Tag',
+  deviceModel: 'Model',
+  serialNumber: 'Serial Number',
+  macAddress: 'MAC Address',
+  ipAddress: 'IP Address',
+  purchaseDate: 'Purchase Date',
+  arrivalDate: 'Arrival Date',
+  warrantyStart: 'Warranty Start',
+  warrantyEnd: 'Warranty End',
+  billDate: 'Bill Date',
+  billAmount: 'Bill Amount',
+  invoiceNumber: 'Invoice Number',
+  departmentId: 'Department',
+  locationId: 'Location',
+  createdBy: 'Created By',
+  createdAt: 'Created At',
+  updatedAt: 'Updated At',
+  hodName: 'HOD Name',
+  hodEmail: 'HOD Email',
+  hodPhone: 'HOD Phone',
+  contactEmail: 'Contact Email',
+  status: 'Status',
+  quantity: 'Quantity',
+  cost: 'Cost',
+  brand: 'Brand',
+  category: 'Category',
+  vendor: 'Vendor',
+  notes: 'Notes',
+  features: 'Features',
+  name: 'Name',
+  block: 'Block',
+  building: 'Building',
+  floor: 'Floor',
+  room: 'Room',
+  rack: 'Rack',
+};
+
+const formatFieldName = (key: string) => fieldLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+
+const formatValue = (value: unknown): string => {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (Array.isArray(value)) return value.join(', ') || '—';
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    // Handle populated refs like { name: "CS", id: "..." }
+    if (obj.name) return String(obj.name);
+    if (obj.deviceName) return String(obj.deviceName);
+    if (obj.building) return `${obj.building}, ${obj.floor || ''}, ${obj.room || ''}`.replace(/, ,/g, ',').replace(/,$/, '');
+    return Object.values(obj).filter(v => v && typeof v !== 'object').join(', ') || '—';
+  }
+  const str = String(value);
+  // Format ISO dates to readable
+  if (/^\d{4}-\d{2}-\d{2}T/.test(str)) {
+    return new Date(str).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  return str;
+};
+
+const summarizeChanges = (oldData?: Record<string, unknown>, newData?: Record<string, unknown>): string => {
+  if (!oldData && newData) {
+    // CREATE — just show key fields
+    const parts: string[] = [];
+    if (newData.deviceName) parts.push(`"${newData.deviceName}"`);
+    else if (newData.name) parts.push(`"${newData.name}"`);
+    if (newData.assetTag) parts.push(`(${newData.assetTag})`);
+    if (newData.status) parts.push(`Status: ${String(newData.status).replace(/_/g, ' ')}`);
+    return parts.length > 0 ? parts.join(' ') : 'New record created';
+  }
+  if (oldData && !newData) {
+    return 'Record deleted';
+  }
+  if (oldData && newData) {
+    // UPDATE — show changed fields
+    const changes: string[] = [];
+    const allKeys = new Set([...Object.keys(oldData), ...Object.keys(newData)]);
+    for (const key of allKeys) {
+      if (['_id', 'id', '__v', 'createdAt', 'updatedAt', 'createdBy'].includes(key)) continue;
+      const oldVal = formatValue(oldData[key]);
+      const newVal = formatValue(newData[key]);
+      if (oldVal !== newVal) {
+        changes.push(`${formatFieldName(key)}: ${oldVal} → ${newVal}`);
+      }
+    }
+    return changes.length > 0 ? changes.slice(0, 3).join(', ') + (changes.length > 3 ? ` (+${changes.length - 3} more)` : '') : 'No changes detected';
+  }
+  return '';
+};
+
 export default function AuditLogs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [actionFilter, setActionFilter] = useState('All');
@@ -145,18 +237,13 @@ export default function AuditLogs() {
                       </div>
                       <p className="text-sm text-foreground">
                         <span className="font-medium">Admin</span>
-                        {' '}performed {log.action.toLowerCase().replace(/_/g, ' ')} on{' '}
-                        <span className="font-mono text-xs bg-muted px-1 rounded">{log.entityId}</span>
+                        {' '}{log.action === 'CREATE' ? 'created' : log.action === 'UPDATE' ? 'updated' : log.action === 'DELETE' ? 'deleted' : log.action.toLowerCase().replace(/_/g, ' ')}{' '}
+                        a <span className="font-medium">{log.entityType}</span>
                       </p>
                       {(log.oldData || log.newData) && (
-                        <div className="mt-2 p-3 rounded-lg bg-muted/50 text-xs font-mono">
-                          {log.oldData && (
-                            <div className="text-red-600">- {JSON.stringify(log.oldData)}</div>
-                          )}
-                          {log.newData && (
-                            <div className="text-green-600">+ {JSON.stringify(log.newData)}</div>
-                          )}
-                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {summarizeChanges(log.oldData, log.newData)}
+                        </p>
                       )}
                     </div>
                   </div>

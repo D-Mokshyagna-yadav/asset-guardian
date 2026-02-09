@@ -89,6 +89,21 @@ export default function AssignmentForm() {
     fetchLocations();
   }, [formData.departmentId]);
 
+  const scrollToFirstError = (errorFields: Record<string, string>) => {
+    const fieldNames = Object.keys(errorFields).filter(k => k !== 'submit');
+    if (fieldNames.length === 0) return;
+    for (const field of fieldNames) {
+      const el = document.getElementById(field) || document.querySelector(`[name="${field}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+          el.focus();
+        }
+        break;
+      }
+    }
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.deviceId) newErrors.deviceId = 'Device is required';
@@ -97,6 +112,9 @@ export default function AssignmentForm() {
       newErrors.quantity = 'Quantity must be at least 1';
     }
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setTimeout(() => scrollToFirstError(newErrors), 100);
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -123,6 +141,7 @@ export default function AssignmentForm() {
     } catch (error: any) {
       const msg = error?.response?.data?.message || 'Failed to save assignment';
       setErrors({ submit: msg });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsLoading(false);
     }

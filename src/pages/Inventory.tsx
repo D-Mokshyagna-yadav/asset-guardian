@@ -19,7 +19,8 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { Search, Plus, Filter, Eye, Edit, Trash2, BarChart3 } from 'lucide-react';
+import { Search, Plus, Filter, Eye, Edit, Trash2, BarChart3, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function Inventory() {
   const navigate = useNavigate();
@@ -30,6 +31,7 @@ export default function Inventory() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
+  const [alertMessage, setAlertMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -104,8 +106,13 @@ export default function Inventory() {
     try {
       await devicesApi.deleteDevice(deviceId);
       setDevices(prev => prev.filter((d: any) => (d._id || d.id) !== deviceId));
-    } catch (err) {
-      console.error('Failed to delete device', err);
+      setAlertMessage({ type: 'success', text: 'Device deleted successfully.' });
+      setTimeout(() => setAlertMessage(null), 4000);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || 'Failed to delete device. It may have active assignments.';
+      setAlertMessage({ type: 'error', text: msg });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => setAlertMessage(null), 6000);
     }
   };
 
@@ -128,6 +135,14 @@ export default function Inventory() {
           </Button>
         </Link>
       </div>
+
+      {/* Alert Messages */}
+      {alertMessage && (
+        <Alert variant={alertMessage.type === 'error' ? 'destructive' : 'default'} className={`mb-6 ${alertMessage.type === 'success' ? 'border-green-200 bg-green-50 text-green-800' : ''}`}>
+          {alertMessage.type === 'error' ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />}
+          <AlertDescription>{alertMessage.text}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Filters */}
       <Card className="mb-6">

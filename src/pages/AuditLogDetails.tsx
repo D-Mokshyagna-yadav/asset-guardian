@@ -16,6 +16,83 @@ import {
   ClipboardList,
 } from 'lucide-react';
 
+// Human-readable field labels
+const fieldLabels: Record<string, string> = {
+  deviceName: 'Device Name',
+  assetTag: 'Asset Tag',
+  deviceModel: 'Model',
+  serialNumber: 'Serial Number',
+  macAddress: 'MAC Address',
+  ipAddress: 'IP Address',
+  purchaseDate: 'Purchase Date',
+  arrivalDate: 'Arrival Date',
+  warrantyStart: 'Warranty Start',
+  warrantyEnd: 'Warranty End',
+  billDate: 'Bill Date',
+  billAmount: 'Bill Amount',
+  invoiceNumber: 'Invoice Number',
+  departmentId: 'Department',
+  locationId: 'Location',
+  createdBy: 'Created By',
+  createdAt: 'Created At',
+  updatedAt: 'Updated At',
+  hodName: 'HOD Name',
+  hodEmail: 'HOD Email',
+  hodPhone: 'HOD Phone',
+  contactEmail: 'Contact Email',
+  status: 'Status',
+  quantity: 'Quantity',
+  cost: 'Cost',
+  brand: 'Brand',
+  category: 'Category',
+  vendor: 'Vendor',
+  notes: 'Notes',
+  features: 'Features',
+  name: 'Name',
+  block: 'Block',
+  building: 'Building',
+  floor: 'Floor',
+  room: 'Room',
+  rack: 'Rack',
+};
+
+const formatFieldName = (key: string) => fieldLabels[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+
+const formatValue = (value: unknown): string => {
+  if (value === null || value === undefined) return '—';
+  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+  if (Array.isArray(value)) return value.join(', ') || '—';
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    if (obj.name) return String(obj.name);
+    if (obj.deviceName) return String(obj.deviceName);
+    if (obj.building) return `${obj.building}, ${obj.floor || ''}, ${obj.room || ''}`;
+    return Object.values(obj).filter(v => v && typeof v !== 'object').join(', ') || '—';
+  }
+  const str = String(value);
+  if (/^\d{4}-\d{2}-\d{2}T/.test(str)) {
+    return new Date(str).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  return str.replace(/_/g, ' ');
+};
+
+const SKIP_FIELDS = ['_id', 'id', '__v', 'createdAt', 'updatedAt', 'createdBy'];
+
+const renderDataTable = (data: Record<string, unknown>, colorClass: string) => {
+  const entries = Object.entries(data).filter(([key]) => !SKIP_FIELDS.includes(key));
+  if (entries.length === 0) return <p className="text-sm text-muted-foreground">No data</p>;
+  return (
+    <div className="space-y-1">
+      {entries.map(([key, value]) => (
+        <div key={key} className={`flex justify-between items-start py-1.5 px-3 rounded ${colorClass}`}>
+          <span className="text-xs font-medium text-muted-foreground w-1/3">{formatFieldName(key)}</span>
+          <span className="text-sm text-right w-2/3">{formatValue(value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const getActionColor = (action: string) => {
   switch (action) {
     case 'CREATE':
@@ -139,12 +216,15 @@ export default function AuditLogDetails() {
             <CardContent>
               <p className="text-base">
                 <span className="font-medium">Admin</span>
-                <span className="text-muted-foreground"> performed </span>
-                <span className={`px-2 py-0.5 rounded text-sm font-medium ${getActionColor(log.action)}`}>
-                  {log.action.replace(/_/g, ' ')}
-                </span>
-                <span className="text-muted-foreground"> on </span>
-                <span className="font-medium">{log.entityType}</span>
+                  <span className="text-muted-foreground">
+                    {log.action === 'CREATE' ? ' created a new ' :
+                     log.action === 'UPDATE' ? ' updated a ' :
+                     log.action === 'DELETE' ? ' deleted a ' :
+                     ` performed ${log.action.toLowerCase().replace(/_/g, ' ')} on a `}
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-sm font-medium ${getActionColor(log.action)}`}>
+                    {log.entityType}
+                  </span>
               </p>
             </CardContent>
           </Card>
@@ -165,9 +245,7 @@ export default function AuditLogDetails() {
                     <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">Previous Values</p>
                     {log.oldData ? (
                       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <pre className="text-sm text-red-800 whitespace-pre-wrap font-mono">
-                          {JSON.stringify(log.oldData, null, 2)}
-                        </pre>
+                        {renderDataTable(log.oldData, 'bg-red-50/50')}
                       </div>
                     ) : (
                       <div className="bg-muted/50 rounded-lg p-4 text-center">
@@ -181,9 +259,7 @@ export default function AuditLogDetails() {
                     <p className="text-xs text-muted-foreground uppercase tracking-wider mb-3">New Values</p>
                     {log.newData ? (
                       <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
-                        <pre className="text-sm text-emerald-800 whitespace-pre-wrap font-mono">
-                          {JSON.stringify(log.newData, null, 2)}
-                        </pre>
+                        {renderDataTable(log.newData, 'bg-emerald-50/50')}
                       </div>
                     ) : (
                       <div className="bg-muted/50 rounded-lg p-4 text-center">

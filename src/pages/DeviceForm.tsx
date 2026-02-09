@@ -142,9 +142,27 @@ export default function DeviceForm() {
     fetchLocations();
   }, [formData.departmentId]);
 
+  const scrollToFirstError = (errorFields: Record<string, string>) => {
+    const fieldNames = Object.keys(errorFields).filter(k => k !== 'submit');
+    if (fieldNames.length === 0) return;
+    // Try to find the element by id or name
+    for (const field of fieldNames) {
+      const el = document.getElementById(field) || document.querySelector(`[name="${field}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+          el.focus();
+        }
+        break;
+      }
+    }
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
+    if (!formData.assetTag.trim()) newErrors.assetTag = 'Asset tag is required';
+    if (formData.assetTag && !/^[A-Z0-9-]+$/.test(formData.assetTag.toUpperCase())) newErrors.assetTag = 'Asset tag must contain only letters, numbers, and hyphens';
     if (!formData.deviceName.trim()) newErrors.deviceName = 'Device name is required';
     if (!formData.category.trim()) newErrors.category = 'Category is required';
     if (!formData.brand.trim()) newErrors.brand = 'Brand is required';
@@ -158,6 +176,9 @@ export default function DeviceForm() {
     if (formData.billAmount && parseFloat(formData.billAmount) < 0) newErrors.billAmount = 'Bill amount must be positive';
 
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setTimeout(() => scrollToFirstError(newErrors), 100);
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -168,7 +189,7 @@ export default function DeviceForm() {
 
     try {
       const payload: Record<string, any> = {
-        assetTag: formData.assetTag || undefined,
+        assetTag: formData.assetTag.toUpperCase(),
         deviceName: formData.deviceName,
         category: formData.category,
         brand: formData.brand,
@@ -199,8 +220,21 @@ export default function DeviceForm() {
         await devicesApi.createDevice(payload);
       }
       navigate('/inventory');
-    } catch (error) {
-      setErrors({ submit: 'Failed to save device. Please try again.' });
+    } catch (error: any) {
+      const serverErrors = error?.response?.data?.errors;
+      if (serverErrors && Array.isArray(serverErrors)) {
+        const fieldErrors: Record<string, string> = {};
+        serverErrors.forEach((err: any) => {
+          if (err.field) fieldErrors[err.field] = err.message;
+        });
+        fieldErrors.submit = serverErrors.map((e: any) => e.message).join(', ');
+        setErrors(fieldErrors);
+        setTimeout(() => scrollToFirstError(fieldErrors), 100);
+      } else {
+        const errMsg = error?.response?.data?.message || 'Failed to save device. Please try again.';
+        setErrors({ submit: errMsg });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -325,9 +359,9 @@ export default function DeviceForm() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="assetTag">Asset Tag</Label>
-                    <Input id="assetTag" name="assetTag" value={formData.assetTag} onChange={handleChange} placeholder="e.g., AST-2024-001" className="bg-white" />
-                    <p className="text-xs text-muted-foreground">Auto-generated if left empty</p>
+                    <Label htmlFor="assetTag">Asset Tag *</Label>
+                    <Input id="assetTag" name="assetTag" value={formData.assetTag} onChange={handleChange} placeholder="e.g., AST-2024-001" className={`bg-white ${errors.assetTag ? 'border-red-500' : ''}`} />
+                    {errors.assetTag ? <p className="text-sm text-red-500">{errors.assetTag}</p> : <p className="text-xs text-muted-foreground">Must be uppercase letters, numbers, and hyphens</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="deviceName">Device Name *</Label>

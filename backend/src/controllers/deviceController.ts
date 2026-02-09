@@ -24,7 +24,7 @@ export const deviceValidation = [
     .trim()
     .notEmpty()
     .withMessage('Brand is required'),
-  body('model')
+  body('deviceModel')
     .trim()
     .notEmpty()
     .withMessage('Model is required'),
@@ -37,6 +37,54 @@ export const deviceValidation = [
     .isFloat({ min: 0 })
     .withMessage('Cost must be a positive number'),
   body('quantity')
+    .isInt({ min: 1 })
+    .withMessage('Quantity must be at least 1'),
+  body('status')
+    .optional()
+    .isIn(['IN_STOCK', 'ASSIGNED', 'MAINTENANCE', 'SCRAPPED'])
+    .withMessage('Invalid device status'),
+];
+
+export const deviceUpdateValidation = [
+  body('assetTag')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('Asset tag cannot be empty')
+    .matches(/^[A-Z0-9-]+$/)
+    .withMessage('Asset tag must contain only uppercase letters, numbers, and hyphens'),
+  body('deviceName')
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 200 })
+    .withMessage('Device name must be between 2 and 200 characters'),
+  body('category')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('Category cannot be empty'),
+  body('brand')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('Brand cannot be empty'),
+  body('deviceModel')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('Model cannot be empty'),
+  body('serialNumber')
+    .optional()
+    .trim()
+    .notEmpty()
+    .withMessage('Serial number cannot be empty'),
+  body('cost')
+    .optional()
+    .isNumeric()
+    .isFloat({ min: 0 })
+    .withMessage('Cost must be a positive number'),
+  body('quantity')
+    .optional()
     .isInt({ min: 1 })
     .withMessage('Quantity must be at least 1'),
   body('status')

@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react';
 import { Department } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2, Plus, Users, Mail, Phone, Trash2 } from 'lucide-react';
+import { Building2, Plus, Users, Mail, Phone, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function Departments() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
+  const [alertMessage, setAlertMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const fetchDepartments = async () => {
     try {
@@ -29,8 +31,13 @@ export default function Departments() {
     try {
       await departmentsApi.deleteDepartment(id);
       setDepartments(prev => prev.filter(d => d.id !== id));
+      setAlertMessage({ type: 'success', text: 'Department deleted successfully.' });
+      setTimeout(() => setAlertMessage(null), 4000);
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to delete department');
+      const msg = error?.response?.data?.message || 'Failed to delete department. It may have devices or locations assigned.';
+      setAlertMessage({ type: 'error', text: msg });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => setAlertMessage(null), 6000);
     }
   };
 
@@ -56,6 +63,14 @@ export default function Departments() {
           </Button>
         </Link>
       </div>
+
+      {/* Alert Messages */}
+      {alertMessage && (
+        <Alert variant={alertMessage.type === 'error' ? 'destructive' : 'default'} className={`mb-6 ${alertMessage.type === 'success' ? 'border-green-200 bg-green-50 text-green-800' : ''}`}>
+          {alertMessage.type === 'error' ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />}
+          <AlertDescription>{alertMessage.text}</AlertDescription>
+        </Alert>
+      )}
 
       {departments.length === 0 ? (
         <div className="text-center py-12">

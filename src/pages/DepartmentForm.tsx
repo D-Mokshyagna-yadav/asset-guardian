@@ -71,6 +71,21 @@ export default function DepartmentForm() {
     }
   }, [id]);
 
+  const scrollToFirstError = (errorFields: Record<string, string>) => {
+    const fieldNames = Object.keys(errorFields).filter(k => k !== 'submit');
+    if (fieldNames.length === 0) return;
+    for (const field of fieldNames) {
+      const el = document.getElementById(field) || document.querySelector(`[name="${field}"]`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+          el.focus();
+        }
+        break;
+      }
+    }
+  };
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     if (!formData.name.trim()) newErrors.name = 'Department name is required';
@@ -88,6 +103,9 @@ export default function DepartmentForm() {
       newErrors.contactEmail = 'Please enter a valid email address';
     }
     setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      setTimeout(() => scrollToFirstError(newErrors), 100);
+    }
     return Object.keys(newErrors).length === 0;
   };
 
@@ -134,6 +152,7 @@ export default function DepartmentForm() {
       navigate('/departments');
     } catch (error: any) {
       setErrors({ submit: error.response?.data?.message || 'Failed to save department. Please try again.' });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsLoading(false);
     }

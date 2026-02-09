@@ -125,11 +125,13 @@ const startServer = async () => {
     await connectDB();
 
     const PORT = config.port;
-    const server = app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT} in ${config.nodeEnv} mode`);
+    const HOST = config.host;
+    const server = app.listen(Number(PORT), HOST, () => {
+      console.log(`🚀 Server running on ${HOST}:${PORT} in ${config.nodeEnv} mode`);
       console.log(`📋 API Health Check: http://localhost:${PORT}/api/health`);
       
       if (config.nodeEnv === 'development') {
+        console.log(`🔧 Listening on all interfaces (0.0.0.0) — accessible from LAN`);
         console.log(`🔧 Frontend should connect to: http://localhost:${PORT}/api`);
       }
     });

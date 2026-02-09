@@ -1,7 +1,9 @@
 import axios, { AxiosResponse, AxiosError, AxiosRequestConfig } from 'axios';
 import { User, Device, Department, Location, Assignment, AuditLog } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5173/api';
+// Dynamically resolve API URL based on the current browser hostname
+// so it works on both localhost and LAN/network access
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || `${window.location.protocol}//${window.location.hostname}:5173/api`;
 
 // Create axios instance
 const api = axios.create({

@@ -5,11 +5,13 @@ import { Assignment, Department, Device } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Eye, Trash2 } from 'lucide-react';
+import { Plus, Eye, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export default function Assignments() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [alertMessage, setAlertMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
   const loadAssignments = async () => {
     try {
@@ -29,8 +31,13 @@ export default function Assignments() {
     try {
       await assignmentsApi.deleteAssignment(id);
       setAssignments(prev => prev.filter(a => a.id !== id));
-    } catch (error) {
-      console.error('Failed to delete assignment:', error);
+      setAlertMessage({ type: 'success', text: 'Assignment deleted successfully.' });
+      setTimeout(() => setAlertMessage(null), 4000);
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || 'Failed to delete assignment.';
+      setAlertMessage({ type: 'error', text: msg });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setTimeout(() => setAlertMessage(null), 6000);
     }
   };
 
@@ -59,6 +66,14 @@ export default function Assignments() {
           </Button>
         </Link>
       </div>
+
+      {/* Alert Messages */}
+      {alertMessage && (
+        <Alert variant={alertMessage.type === 'error' ? 'destructive' : 'default'} className={`mb-6 ${alertMessage.type === 'success' ? 'border-green-200 bg-green-50 text-green-800' : ''}`}>
+          {alertMessage.type === 'error' ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />}
+          <AlertDescription>{alertMessage.text}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Assignments Table */}
       <Card>

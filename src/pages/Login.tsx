@@ -11,15 +11,27 @@ export default function Login() {
   const [email, setEmail] = useState('admin@college.edu');
   const [password, setPassword] = useState('demo1234');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    const newFieldErrors: Record<string, string> = {};
 
-    if (!email || !password) {
-      setError('Please enter both email and password');
+    if (!email.trim()) newFieldErrors.email = 'Email is required';
+    if (!password) newFieldErrors.password = 'Password is required';
+
+    setFieldErrors(newFieldErrors);
+
+    if (Object.keys(newFieldErrors).length > 0) {
+      const firstField = Object.keys(newFieldErrors)[0];
+      const el = document.getElementById(firstField);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (el instanceof HTMLInputElement) el.focus();
+      }
       return;
     }
 
@@ -28,6 +40,12 @@ export default function Login() {
       navigate('/dashboard');
     } else {
       setError('Invalid email or password');
+    }
+  };
+
+  const clearFieldError = (field: string) => {
+    if (fieldErrors[field]) {
+      setFieldErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
@@ -63,10 +81,11 @@ export default function Login() {
                   type="email"
                   placeholder="admin@college.edu"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
                   autoComplete="email"
-                  className="h-11"
+                  className={`h-11 ${fieldErrors.email ? 'border-red-500' : ''}`}
                 />
+                {fieldErrors.email && <p className="text-sm text-red-500">{fieldErrors.email}</p>}
               </div>
 
               <div className="space-y-2">
@@ -76,10 +95,11 @@ export default function Login() {
                   type="password"
                   placeholder="••••••••"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
                   autoComplete="current-password"
-                  className="h-11"
+                  className={`h-11 ${fieldErrors.password ? 'border-red-500' : ''}`}
                 />
+                {fieldErrors.password && <p className="text-sm text-red-500">{fieldErrors.password}</p>}
               </div>
 
               <Button type="submit" disabled={isLoading} className="w-full">

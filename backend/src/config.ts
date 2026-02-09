@@ -5,6 +5,7 @@ dotenv.config();
 
 export const config = {
   port: process.env.PORT || 5173,
+  host: process.env.HOST || '0.0.0.0',
   nodeEnv: process.env.NODE_ENV || 'development',
   mongodb: {
     uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/asset-guardian',

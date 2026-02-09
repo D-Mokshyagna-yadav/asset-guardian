@@ -43,6 +43,7 @@ export interface Device {
   category: string;
   brand: string;
   model: string;
+  deviceModel: string;
   serialNumber: string;
   macAddress?: string;
   ipAddress?: string;
@@ -89,6 +90,7 @@ export interface AuditLog {
   performedBy: string;
   oldData?: Record<string, unknown>;
   newData?: Record<string, unknown>;
+  ipAddress?: string;
   timestamp: string;
 }
 

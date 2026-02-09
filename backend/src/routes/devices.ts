@@ -8,6 +8,7 @@ import {
   getDeviceStats,
   getAvailableQuantity,
   deviceValidation,
+  deviceUpdateValidation,
 } from '../controllers/deviceController';
 import { authenticate, authorize } from '../middleware/auth';
 import { handleValidationErrors } from '../middleware/validation';
@@ -44,7 +45,7 @@ router.post(
 router.patch(
   '/:id',
   authorize('ADMIN'),
-  deviceValidation,
+  deviceUpdateValidation,
   handleValidationErrors,
   auditLogger('UPDATE', 'Device'),
   updateDevice
