@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
-import { departmentsApi, locationsApi, auditLogsApi, usersApi } from '@/lib/api';
+import { assignmentsApi } from '@/lib/api';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,56 +11,41 @@ import {
   Building2,
   MapPin,
   Calendar,
-  User,
-  Check,
-  X,
   FileText,
-  MessageSquare,
   Eye,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { User as UserType, Department, Location, AuditLog } from '@/types';
-import { getAssignments, getDevices } from '@/data/store';
+import { Assignment, Device, Department, Location } from '@/types';
 
 export default function AssignmentDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [users, setUsers] = useState<UserType[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [assignment, setAssignment] = useState<Assignment | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadLookupData = async () => {
+    const loadAssignment = async () => {
+      if (!id) return;
       try {
-        const [deptRes, locRes, usersRes] = await Promise.all([
-          departmentsApi.getDepartments({ limit: 100 }),
-          locationsApi.getLocations({ limit: 100 }),
-          usersApi.getUsers({ limit: 100 }),
-        ]);
-        setDepartments(deptRes.data.data);
-        setLocations(locRes.data.data);
-        setUsers(usersRes.data.data);
+        const res = await assignmentsApi.getAssignmentById(id);
+        setAssignment(res.data.data?.assignment || null);
       } catch (error) {
-        console.error('Failed to load lookup data:', error);
+        console.error('Failed to load assignment:', error);
+      } finally {
+        setLoading(false);
       }
     };
+    loadAssignment();
+  }, [id]);
 
-    loadLookupData();
-  }, []);
-
-  const assignments = getAssignments();
-  const devices = getDevices();
-  const assignment = assignments.find(a => a.id === id);
-  const device = devices.find(d => d.id === assignment?.deviceId);
-  const department = departments.find(d => d.id === assignment?.departmentId);
-  const location = locations.find(l => l.id === assignment?.locationId);
-  const requestedBy = users.find(u => u.id === assignment?.requestedBy);
-  const approvedBy = users.find(u => u.id === assignment?.approvedBy);
-  const assignmentLogs = auditLogs.filter(log => log.entityId === id && log.entityType === 'Assignment');
-
-  const canApprove = user?.role === 'SUPER_ADMIN';
+  if (loading) {
+    return (
+      <div className="p-6 lg:p-8 animate-fade-in">
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!assignment) {
     return (
@@ -75,6 +60,10 @@ export default function AssignmentDetails() {
       </div>
     );
   }
+
+  const device = typeof assignment.deviceId === 'object' ? (assignment.deviceId as Device) : null;
+  const department = typeof assignment.departmentId === 'object' ? (assignment.departmentId as Department) : null;
+  const location = typeof assignment.locationId === 'object' ? (assignment.locationId as Location) : null;
 
   return (
     <div className="p-6 lg:p-8 animate-fade-in">
@@ -91,26 +80,12 @@ export default function AssignmentDetails() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground">Assignment Details</h1>
-                <p className="text-muted-foreground font-mono text-sm">{assignment.id}</p>
+                <p className="text-muted-foreground text-sm">Qty: {assignment.quantity ?? 1}</p>
               </div>
             </div>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <StatusBadge status={assignment.status} />
-          {canApprove && assignment.status === 'PENDING' && (
-            <div className="flex items-center gap-2">
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
-                <Check className="h-4 w-4 mr-2" />
-                Approve
-              </Button>
-              <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10">
-                <X className="h-4 w-4 mr-2" />
-                Reject
-              </Button>
-            </div>
-          )}
-        </div>
+        <StatusBadge status={assignment.status} />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -138,10 +113,6 @@ export default function AssignmentDetails() {
                         <p className="text-sm font-mono">{device.assetTag}</p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Quantity</p>
-                        <p className="text-sm font-medium">{assignment.quantity ?? 1}</p>
-                      </div>
-                      <div>
                         <p className="text-xs text-muted-foreground">Category</p>
                         <p className="text-sm">{device.category}</p>
                       </div>
@@ -165,15 +136,15 @@ export default function AssignmentDetails() {
           </Card>
 
           {/* Target Location */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <MapPin className="h-5 w-5 text-primary" />
-                Target Location
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {location ? (
+          {location && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  Location
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="grid sm:grid-cols-4 gap-4">
                   <div>
                     <p className="text-xs text-muted-foreground">Building</p>
@@ -194,82 +165,21 @@ export default function AssignmentDetails() {
                     </div>
                   )}
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Location information not available</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Request Information */}
-          {(assignment.reason || assignment.notes) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <FileText className="h-5 w-5 text-primary" />
-                  Request Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {assignment.reason && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Request Reason</p>
-                    <p className="text-sm font-medium">{assignment.reason.replace(/_/g, ' ')}</p>
-                  </div>
-                )}
-                {assignment.notes && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Request Notes</p>
-                    <p className="text-sm bg-muted/50 p-3 rounded-lg">{assignment.notes}</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}
 
-          {/* Remarks */}
-          {assignment.remarks && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <MessageSquare className="h-5 w-5 text-primary" />
-                  Remarks
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm bg-muted/50 p-4 rounded-lg">{assignment.remarks}</p>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Activity Log */}
-          {assignmentLogs.length > 0 && (
+          {/* Notes */}
+          {assignment.notes && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <FileText className="h-5 w-5 text-primary" />
-                  Activity History
+                  Notes
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  {assignmentLogs.map((log) => (
-                    <div key={log.id} className="flex items-start gap-3 pb-4 border-b border-border last:border-0 last:pb-0">
-                      <div className="p-1.5 rounded-full bg-muted">
-                        <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm">
-                          <span className="font-medium">{typeof log.performedBy === 'object' ? log.performedBy?.name : log.performedBy}</span>
-                          <span className="text-muted-foreground"> performed </span>
-                          <span className="font-medium">{log.action.replace(/_/g, ' ')}</span>
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(log.timestamp).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <p className="text-sm bg-muted/50 p-4 rounded-lg">{assignment.notes}</p>
               </CardContent>
             </Card>
           )}
@@ -305,59 +215,7 @@ export default function AssignmentDetails() {
             </CardContent>
           </Card>
 
-          {/* Requested By */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <User className="h-5 w-5 text-primary" />
-                Requested By
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {requestedBy ? (
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <User className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <Link to={`/users/${requestedBy.id}`} className="text-sm font-medium text-primary hover:underline">
-                      {requestedBy.name}
-                    </Link>
-                    <p className="text-xs text-muted-foreground">{requestedBy.email}</p>
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">User not found</p>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Approved By */}
-          {approvedBy && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Check className="h-5 w-5 text-emerald-600" />
-                  Approved By
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                    <User className="h-5 w-5 text-emerald-600" />
-                  </div>
-                  <div>
-                    <Link to={`/users/${approvedBy.id}`} className="text-sm font-medium text-primary hover:underline">
-                      {approvedBy.name}
-                    </Link>
-                    <p className="text-xs text-muted-foreground">{approvedBy.email}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Dates */}
+          {/* Timeline */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
@@ -367,6 +225,18 @@ export default function AssignmentDetails() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-muted-foreground">Assigned</p>
+                  <p className="text-sm font-medium">
+                    {new Date(assignment.assignedAt || assignment.createdAt).toLocaleString()}
+                  </p>
+                </div>
+                {assignment.returnedAt && (
+                  <div>
+                    <p className="text-xs text-muted-foreground">Returned</p>
+                    <p className="text-sm font-medium">{new Date(assignment.returnedAt).toLocaleString()}</p>
+                  </div>
+                )}
                 <div>
                   <p className="text-xs text-muted-foreground">Created</p>
                   <p className="text-sm font-medium">{new Date(assignment.createdAt).toLocaleString()}</p>

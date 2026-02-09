@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { auditLogsApi } from '@/lib/api';
-import { useState, useEffect } from 'react';
 import { AuditLog } from '@/types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,23 +14,40 @@ import {
 } from '@/components/ui/select';
 import { Search, Filter, FileText, Download, Eye } from 'lucide-react';
 
-const actionTypes = ['All', 'CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE', 'APPROVED', 'REJECTED', 'ROLE_CHANGE'];
-const entityTypes = ['All', 'Device', 'User', 'Assignment', 'Department'];
+const actionTypes = ['All', 'CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE'];
+const entityTypes = ['All', 'Device', 'Assignment', 'Department'];
 
 export default function AuditLogs() {
   const [searchQuery, setSearchQuery] = useState('');
   const [actionFilter, setActionFilter] = useState('All');
   const [entityFilter, setEntityFilter] = useState('All');
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredLogs = mockAuditLogs.filter((log) => {
-    const matchesSearch =
-      log.performedBy.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.entityId.toLowerCase().includes(searchQuery.toLowerCase());
+  useEffect(() => {
+    const fetchLogs = async () => {
+      try {
+        const params: Record<string, string> = {};
+        if (actionFilter !== 'All') params.action = actionFilter;
+        if (entityFilter !== 'All') params.entityType = entityFilter;
+        const res = await auditLogsApi.getAuditLogs({ ...params, limit: 200 } as any);
+        setLogs(res.data.data || []);
+      } catch (err) {
+        console.error('Failed to fetch audit logs', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLogs();
+  }, [actionFilter, entityFilter]);
 
-    const matchesAction = actionFilter === 'All' || log.action === actionFilter;
-    const matchesEntity = entityFilter === 'All' || log.entityType === entityFilter;
-
-    return matchesSearch && matchesAction && matchesEntity;
+  const filteredLogs = logs.filter((log) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (log.performedBy || '').toString().toLowerCase().includes(q) ||
+      log.entityId.toLowerCase().includes(q)
+    );
   });
 
   const getActionColor = (action: string) => {
@@ -43,12 +59,6 @@ export default function AuditLogs() {
         return 'bg-blue-100 text-blue-800';
       case 'DELETE':
         return 'bg-red-100 text-red-800';
-      case 'APPROVED':
-        return 'bg-green-100 text-green-800';
-      case 'REJECTED':
-        return 'bg-orange-100 text-orange-800';
-      case 'ROLE_CHANGE':
-        return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -113,6 +123,9 @@ export default function AuditLogs() {
       </Card>
 
       {/* Logs List */}
+      {loading ? (
+        <div className="text-center py-12 text-muted-foreground">Loading audit logs...</div>
+      ) : (
       <Card>
         <CardContent className="p-0">
           <div className="divide-y divide-border">
@@ -131,7 +144,7 @@ export default function AuditLogs() {
                         <span className="text-sm text-muted-foreground">{log.entityType}</span>
                       </div>
                       <p className="text-sm text-foreground">
-                        <span className="font-medium">{log.performedBy}</span>
+                        <span className="font-medium">Admin</span>
                         {' '}performed {log.action.toLowerCase().replace(/_/g, ' ')} on{' '}
                         <span className="font-mono text-xs bg-muted px-1 rounded">{log.entityId}</span>
                       </p>
@@ -184,6 +197,7 @@ export default function AuditLogs() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

@@ -30,30 +30,30 @@ router.get('/', getLocations);
 // Get location by ID - All authenticated users
 router.get('/:id', getLocationById);
 
-// Create location - SUPER_ADMIN and IT_STAFF
+// Create location - ADMIN
 router.post(
   '/',
-  authorize('SUPER_ADMIN', 'IT_STAFF'),
+  authorize('ADMIN'),
   locationValidation,
   handleValidationErrors,
   auditLogger('CREATE', 'Location'),
   createLocation
 );
 
-// Update location - SUPER_ADMIN and IT_STAFF
+// Update location - ADMIN
 router.patch(
   '/:id',
-  authorize('SUPER_ADMIN', 'IT_STAFF'),
+  authorize('ADMIN'),
   locationValidation,
   handleValidationErrors,
   auditLogger('UPDATE', 'Location'),
   updateLocation
 );
 
-// Delete location - SUPER_ADMIN only
+// Delete location - ADMIN only
 router.delete(
   '/:id',
-  authorize('SUPER_ADMIN'),
+  authorize('ADMIN'),
   auditLogger('DELETE', 'Location'),
   deleteLocation
 );

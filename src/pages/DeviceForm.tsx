@@ -8,13 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { AlertCircle, ArrowLeft, Plus, X, MapPin, Building2, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { departmentsApi, locationsApi, usersApi } from '@/lib/api';
-import { useState, useEffect } from 'react';
-import { Department, Location, User } from '@/types';
-import { Device } from '@/types';
-import { upsertDevice, getDevices } from '@/data/store';
+import { devicesApi, departmentsApi, locationsApi } from '@/lib/api';
+import { Department, Location, Device } from '@/types';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useAuth } from '@/contexts/AuthContext';
 
 const DEVICE_CATEGORIES = [
   'Network Switch',
@@ -28,63 +24,105 @@ const DEVICE_CATEGORIES = [
   'Access Point',
   'Firewall',
   'Storage',
+  'UPS',
+  'SBC',
   'Other',
 ];
 
-const DEVICE_STATUS = ['IN_STOCK', 'ISSUED', 'INSTALLED', 'MAINTENANCE', 'SCRAPPED'];
+const DEVICE_STATUS = ['IN_STOCK', 'ASSIGNED', 'MAINTENANCE', 'SCRAPPED'];
 
 export default function DeviceForm() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-
-  // Role-based access control
-  const isAdmin = user?.role === 'SUPER_ADMIN';
-  const canEditDevices = isAdmin;
-  
-  // Redirect if user doesn't have permission
-  useEffect(() => {
-    if (!canEditDevices) {
-      navigate('/inventory');
-    }
-  }, [canEditDevices, navigate]);
-
-  // Find existing device if editing
-  const storedDevices = getDevices();
-  const existingDevice = id ? storedDevices.find(d => d.id === id) : null;
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [existingDevice, setExistingDevice] = useState<Device | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
 
   const [formData, setFormData] = useState({
-    assetTag: existingDevice?.assetTag || '',
-    deviceName: existingDevice?.deviceName || '',
-    category: existingDevice?.category || '',
-    brand: existingDevice?.brand || '',
-    model: existingDevice?.model || '',
-    serialNumber: existingDevice?.serialNumber || '',
-    macAddress: existingDevice?.macAddress || '',
-    ipAddress: existingDevice?.ipAddress || '',
-    purchaseDate: existingDevice?.purchaseDate || '',
-    arrivalDate: existingDevice?.arrivalDate || '',
-    vendor: existingDevice?.vendor || '',
-    invoiceNumber: existingDevice?.invoiceNumber || '',
-    billDate: existingDevice?.billDate || '',
-    billAmount: existingDevice?.billAmount || '',
-    cost: existingDevice?.cost || '',
-    quantity: existingDevice?.quantity || '1',
-    warrantyStart: existingDevice?.warrantyStart || '',
-    warrantyEnd: existingDevice?.warrantyEnd || '',
-    status: existingDevice?.status || 'IN_STOCK',
-    departmentId: existingDevice?.departmentId || '',
-    locationId: existingDevice?.locationId || '',
-    inchargeUserId: existingDevice?.inchargeUserId || '',
-    features: existingDevice?.features || [],
-    notes: existingDevice?.notes || '',
+    assetTag: '',
+    deviceName: '',
+    category: '',
+    brand: '',
+    deviceModel: '',
+    serialNumber: '',
+    macAddress: '',
+    ipAddress: '',
+    purchaseDate: '',
+    arrivalDate: '',
+    vendor: '',
+    invoiceNumber: '',
+    billDate: '',
+    billAmount: '',
+    cost: '',
+    quantity: '1',
+    warrantyStart: '',
+    warrantyEnd: '',
+    status: 'IN_STOCK',
+    departmentId: '',
+    locationId: '',
+    features: [] as string[],
+    notes: '',
   });
 
   const [newFeature, setNewFeature] = useState('');
-  const [noWarrantyExpiry, setNoWarrantyExpiry] = useState(() => !existingDevice?.warrantyEnd);
+  const [noWarrantyExpiry, setNoWarrantyExpiry] = useState(true);
   const [warrantyYears, setWarrantyYears] = useState('');
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [deptRes, locRes] = await Promise.all([
+          departmentsApi.getDepartments({ limit: 100 }),
+          locationsApi.getLocations({ limit: 100 }),
+        ]);
+        setDepartments(deptRes.data.data || []);
+        setLocations(locRes.data.data || []);
+
+        if (id) {
+          const devRes = await devicesApi.getDeviceById(id);
+          const dev = devRes.data.data?.device;
+          if (dev) {
+            setExistingDevice(dev);
+            const formatDate = (d?: string) => d ? new Date(d).toISOString().split('T')[0] : '';
+            setFormData({
+              assetTag: dev.assetTag || '',
+              deviceName: dev.deviceName || '',
+              category: dev.category || '',
+              brand: dev.brand || '',
+              deviceModel: dev.deviceModel || '',
+              serialNumber: dev.serialNumber || '',
+              macAddress: dev.macAddress || '',
+              ipAddress: dev.ipAddress || '',
+              purchaseDate: formatDate(dev.purchaseDate),
+              arrivalDate: formatDate(dev.arrivalDate),
+              vendor: dev.vendor || '',
+              invoiceNumber: dev.invoiceNumber || '',
+              billDate: formatDate(dev.billDate),
+              billAmount: dev.billAmount?.toString() || '',
+              cost: dev.cost?.toString() || '',
+              quantity: dev.quantity?.toString() || '1',
+              warrantyStart: formatDate(dev.warrantyStart),
+              warrantyEnd: formatDate(dev.warrantyEnd),
+              status: dev.status || 'IN_STOCK',
+              departmentId: (dev.departmentId as string) || '',
+              locationId: (dev.locationId as string) || '',
+              features: dev.features || [],
+              notes: dev.notes || '',
+            });
+            setNoWarrantyExpiry(!dev.warrantyEnd);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load form data', err);
+      } finally {
+        setDataLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -92,14 +130,14 @@ export default function DeviceForm() {
     if (!formData.deviceName.trim()) newErrors.deviceName = 'Device name is required';
     if (!formData.category.trim()) newErrors.category = 'Category is required';
     if (!formData.brand.trim()) newErrors.brand = 'Brand is required';
-    if (!formData.model.trim()) newErrors.model = 'Model is required';
+    if (!formData.deviceModel.trim()) newErrors.deviceModel = 'Model is required';
     if (!formData.serialNumber.trim()) newErrors.serialNumber = 'Serial number is required';
     if (!formData.purchaseDate.trim()) newErrors.purchaseDate = 'Purchase date is required';
     if (!formData.arrivalDate.trim()) newErrors.arrivalDate = 'Arrival date is required';
     if (!formData.vendor.trim()) newErrors.vendor = 'Vendor is required';
-    if (!formData.cost || parseFloat(formData.cost.toString()) < 0) newErrors.cost = 'Valid cost is required';
-    if (!formData.quantity || parseInt(formData.quantity.toString()) < 1) newErrors.quantity = 'Quantity must be at least 1';
-    if (formData.billAmount && parseFloat(formData.billAmount.toString()) < 0) newErrors.billAmount = 'Bill amount must be positive';
+    if (!formData.cost || parseFloat(formData.cost) < 0) newErrors.cost = 'Valid cost is required';
+    if (!formData.quantity || parseInt(formData.quantity) < 1) newErrors.quantity = 'Quantity must be at least 1';
+    if (formData.billAmount && parseFloat(formData.billAmount) < 0) newErrors.billAmount = 'Bill amount must be positive';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -107,22 +145,16 @@ export default function DeviceForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     setIsLoading(true);
 
     try {
-      const warrantyEndValue = noWarrantyExpiry ? undefined : (formData.warrantyEnd || undefined);
-      const newDevice: Device = {
-        id: id || `dev-${Date.now()}`,
-        assetTag: formData.assetTag || `AST-${Date.now()}`,
+      const payload: Record<string, any> = {
+        assetTag: formData.assetTag || undefined,
         deviceName: formData.deviceName,
         category: formData.category,
         brand: formData.brand,
-        model: formData.model,
+        deviceModel: formData.deviceModel,
         serialNumber: formData.serialNumber,
         macAddress: formData.macAddress || undefined,
         ipAddress: formData.ipAddress || undefined,
@@ -131,24 +163,23 @@ export default function DeviceForm() {
         vendor: formData.vendor,
         invoiceNumber: formData.invoiceNumber || undefined,
         billDate: formData.billDate || undefined,
-        billAmount: formData.billAmount ? parseFloat(formData.billAmount.toString()) : undefined,
-        cost: parseFloat(formData.cost.toString()),
-        quantity: parseInt(formData.quantity.toString()),
+        billAmount: formData.billAmount ? parseFloat(formData.billAmount) : undefined,
+        cost: parseFloat(formData.cost),
+        quantity: parseInt(formData.quantity),
         warrantyStart: formData.warrantyStart || undefined,
-        warrantyEnd: warrantyEndValue,
-        status: formData.status as any,
+        warrantyEnd: noWarrantyExpiry ? undefined : (formData.warrantyEnd || undefined),
+        status: formData.status,
         departmentId: formData.departmentId && formData.departmentId !== 'none' ? formData.departmentId : undefined,
         locationId: formData.locationId && formData.locationId !== 'none' ? formData.locationId : undefined,
-        inchargeUserId: formData.inchargeUserId || undefined,
         features: formData.features.length > 0 ? formData.features : undefined,
         notes: formData.notes || undefined,
-        createdBy: existingDevice?.createdBy || '1',
-        createdAt: existingDevice?.createdAt || new Date().toISOString().split('T')[0],
-        updatedAt: new Date().toISOString().split('T')[0],
       };
 
-      await new Promise(resolve => setTimeout(resolve, 300));
-      upsertDevice(newDevice);
+      if (id) {
+        await devicesApi.updateDevice(id, payload);
+      } else {
+        await devicesApi.createDevice(payload);
+      }
       navigate('/inventory');
     } catch (error) {
       setErrors({ submit: 'Failed to save device. Please try again.' });
@@ -159,32 +190,14 @@ export default function DeviceForm() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-    if (name === 'warrantyEnd') {
-      setNoWarrantyExpiry(!value);
-    }
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: '',
-      }));
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'warrantyEnd') setNoWarrantyExpiry(!value);
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
-    if (errors[name]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: '',
-      }));
-    }
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const getWarrantyBaseDate = () => {
@@ -192,56 +205,48 @@ export default function DeviceForm() {
   };
 
   const applyWarrantyYears = (yearsStr: string) => {
-    if (yearsStr === 'manual') return; // Do nothing for manual entry
+    if (yearsStr === 'manual') return;
     const years = parseInt(yearsStr);
     const base = getWarrantyBaseDate();
     if (!base) return;
     const baseDate = new Date(base);
     baseDate.setFullYear(baseDate.getFullYear() + years);
     const nextEnd = baseDate.toISOString().split('T')[0];
-    setFormData(prev => ({
-      ...prev,
-      warrantyEnd: nextEnd,
-    }));
+    setFormData(prev => ({ ...prev, warrantyEnd: nextEnd }));
     setNoWarrantyExpiry(false);
-  }
+  };
 
   const addFeature = () => {
     if (newFeature.trim() && !formData.features.includes(newFeature.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        features: [...prev.features, newFeature.trim()],
-      }));
+      setFormData(prev => ({ ...prev, features: [...prev.features, newFeature.trim()] }));
       setNewFeature('');
     }
   };
 
   const removeFeature = (feature: string) => {
-    setFormData(prev => ({
-      ...prev,
-      features: prev.features.filter(f => f !== feature),
-    }));
+    setFormData(prev => ({ ...prev, features: prev.features.filter(f => f !== feature) }));
   };
 
-  const getDepartmentName = (id?: string) => {
-    if (!id || id === 'none') return 'Not Assigned';
-    return mockDepartments.find(d => d.id === id)?.name || 'Unknown';
+  const getDepartmentName = (deptId?: string) => {
+    if (!deptId || deptId === 'none') return 'Not Assigned';
+    const dept = departments.find((d: any) => (d._id || d.id) === deptId);
+    return dept?.name || 'Unknown';
   };
 
-  const getLocationName = (id?: string) => {
-    if (!id || id === 'none') return 'Not Assigned';
-    const loc = mockLocations.find(l => l.id === id);
+  const getLocationName = (locId?: string) => {
+    if (!locId || locId === 'none') return 'Not Assigned';
+    const loc = locations.find((l: any) => (l._id || l.id) === locId);
     return loc ? `${loc.building}, ${loc.floor}, ${loc.room}` : 'Unknown';
   };
+
+  if (dataLoading) {
+    return <div className="p-6 lg:p-8 text-center text-muted-foreground">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-muted/20 to-muted/50 p-4 lg:p-8">
       <div className="max-w-4xl mx-auto">
-        <Button
-          variant="ghost"
-          onClick={() => navigate('/inventory')}
-          className="mb-6 hover:bg-muted"
-        >
+        <Button variant="ghost" onClick={() => navigate('/inventory')} className="mb-6 hover:bg-muted">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Inventory
         </Button>
@@ -254,7 +259,6 @@ export default function DeviceForm() {
             </CardDescription>
           </CardHeader>
           <CardContent className="pt-8">
-            {/* Current Assignment Info - Only show when editing */}
             {id && existingDevice && (
               <Alert className="mb-8 border-blue-200 bg-blue-50">
                 <Info className="h-5 w-5 text-blue-600" />
@@ -265,14 +269,14 @@ export default function DeviceForm() {
                       <Building2 className="h-4 w-4" />
                       <div>
                         <p className="text-xs text-muted-foreground">Department</p>
-                        <p className="font-medium">{getDepartmentName(existingDevice.departmentId)}</p>
+                        <p className="font-medium">{getDepartmentName(existingDevice.departmentId as string)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4" />
                       <div>
                         <p className="text-xs text-muted-foreground">Location</p>
-                        <p className="font-medium text-xs">{getLocationName(existingDevice.locationId)}</p>
+                        <p className="font-medium text-xs">{getLocationName(existingDevice.locationId as string)}</p>
                       </div>
                     </div>
                   </div>
@@ -288,7 +292,7 @@ export default function DeviceForm() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Basic Device Information */}
+              {/* Basic Info */}
               <div className="border-b pb-6">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-1 bg-primary rounded"></div>
@@ -297,97 +301,45 @@ export default function DeviceForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="assetTag">Asset Tag</Label>
-                    <Input
-                      id="assetTag"
-                      name="assetTag"
-                      value={formData.assetTag}
-                      onChange={handleChange}
-                      placeholder="e.g., AST-2024-001"
-                      className="bg-white"
-                    />
+                    <Input id="assetTag" name="assetTag" value={formData.assetTag} onChange={handleChange} placeholder="e.g., AST-2024-001" className="bg-white" />
                     <p className="text-xs text-muted-foreground">Auto-generated if left empty</p>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="deviceName">Device Name *</Label>
-                    <Input
-                      id="deviceName"
-                      name="deviceName"
-                      value={formData.deviceName}
-                      onChange={handleChange}
-                      placeholder="e.g., Core Switch 01"
-                      className={`bg-white ${errors.deviceName ? 'border-red-500' : ''}`}
-                    />
-                    {errors.deviceName && (
-                      <p className="text-sm text-red-500">{errors.deviceName}</p>
-                    )}
+                    <Input id="deviceName" name="deviceName" value={formData.deviceName} onChange={handleChange} placeholder="e.g., Core Switch 01" className={`bg-white ${errors.deviceName ? 'border-red-500' : ''}`} />
+                    {errors.deviceName && <p className="text-sm text-red-500">{errors.deviceName}</p>}
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="category">Category *</Label>
-                    <Select value={formData.category} onValueChange={(value) => handleSelectChange('category', value)}>
+                    <Select value={formData.category} onValueChange={(v) => handleSelectChange('category', v)}>
                       <SelectTrigger className={errors.category ? 'border-red-500' : ''}>
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {DEVICE_CATEGORIES.map(cat => (
-                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                        ))}
+                        {DEVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    {errors.category && (
-                      <p className="text-sm text-red-500">{errors.category}</p>
-                    )}
+                    {errors.category && <p className="text-sm text-red-500">{errors.category}</p>}
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="brand">Brand *</Label>
-                    <Input
-                      id="brand"
-                      name="brand"
-                      value={formData.brand}
-                      onChange={handleChange}
-                      placeholder="e.g., Cisco"
-                      className={errors.brand ? 'border-red-500' : ''}
-                    />
-                    {errors.brand && (
-                      <p className="text-sm text-red-500">{errors.brand}</p>
-                    )}
+                    <Input id="brand" name="brand" value={formData.brand} onChange={handleChange} placeholder="e.g., Cisco" className={errors.brand ? 'border-red-500' : ''} />
+                    {errors.brand && <p className="text-sm text-red-500">{errors.brand}</p>}
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="model">Model *</Label>
-                    <Input
-                      id="model"
-                      name="model"
-                      value={formData.model}
-                      onChange={handleChange}
-                      placeholder="e.g., Catalyst 9300"
-                      className={errors.model ? 'border-red-500' : ''}
-                    />
-                    {errors.model && (
-                      <p className="text-sm text-red-500">{errors.model}</p>
-                    )}
+                    <Label htmlFor="deviceModel">Model *</Label>
+                    <Input id="deviceModel" name="deviceModel" value={formData.deviceModel} onChange={handleChange} placeholder="e.g., Catalyst 9300" className={errors.deviceModel ? 'border-red-500' : ''} />
+                    {errors.deviceModel && <p className="text-sm text-red-500">{errors.deviceModel}</p>}
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="serialNumber">Serial Number *</Label>
-                    <Input
-                      id="serialNumber"
-                      name="serialNumber"
-                      value={formData.serialNumber}
-                      onChange={handleChange}
-                      placeholder="e.g., CSC-98765432"
-                      className={errors.serialNumber ? 'border-red-500' : ''}
-                    />
-                    {errors.serialNumber && (
-                      <p className="text-sm text-red-500">{errors.serialNumber}</p>
-                    )}
+                    <Input id="serialNumber" name="serialNumber" value={formData.serialNumber} onChange={handleChange} placeholder="e.g., CSC-98765432" className={errors.serialNumber ? 'border-red-500' : ''} />
+                    {errors.serialNumber && <p className="text-sm text-red-500">{errors.serialNumber}</p>}
                   </div>
                 </div>
               </div>
 
-              {/* Network Information */}
+              {/* Network */}
               <div className="border-b pb-6">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-1 bg-primary rounded"></div>
@@ -396,29 +348,16 @@ export default function DeviceForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="macAddress">MAC Address</Label>
-                    <Input
-                      id="macAddress"
-                      name="macAddress"
-                      value={formData.macAddress}
-                      onChange={handleChange}
-                      placeholder="e.g., AA:BB:CC:DD:EE:01"
-                    />
+                    <Input id="macAddress" name="macAddress" value={formData.macAddress} onChange={handleChange} placeholder="e.g., AA:BB:CC:DD:EE:01" />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="ipAddress">IP Address</Label>
-                    <Input
-                      id="ipAddress"
-                      name="ipAddress"
-                      value={formData.ipAddress}
-                      onChange={handleChange}
-                      placeholder="e.g., 192.168.1.1"
-                    />
+                    <Input id="ipAddress" name="ipAddress" value={formData.ipAddress} onChange={handleChange} placeholder="e.g., 192.168.1.1" />
                   </div>
                 </div>
               </div>
 
-              {/* Purchase & Bill Details */}
+              {/* Purchase & Bill */}
               <div className="border-b pb-6">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-1 bg-primary rounded"></div>
@@ -427,124 +366,46 @@ export default function DeviceForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="purchaseDate">Purchase Date *</Label>
-                    <Input
-                      id="purchaseDate"
-                      name="purchaseDate"
-                      type="date"
-                      value={formData.purchaseDate}
-                      onChange={handleChange}
-                      className={errors.purchaseDate ? 'border-red-500' : ''}
-                    />
-                    {errors.purchaseDate && (
-                      <p className="text-sm text-red-500">{errors.purchaseDate}</p>
-                    )}
+                    <Input id="purchaseDate" name="purchaseDate" type="date" value={formData.purchaseDate} onChange={handleChange} className={errors.purchaseDate ? 'border-red-500' : ''} />
+                    {errors.purchaseDate && <p className="text-sm text-red-500">{errors.purchaseDate}</p>}
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="arrivalDate">Arrival Date *</Label>
-                    <Input
-                      id="arrivalDate"
-                      name="arrivalDate"
-                      type="date"
-                      value={formData.arrivalDate}
-                      onChange={handleChange}
-                      className={errors.arrivalDate ? 'border-red-500' : ''}
-                    />
-                    {errors.arrivalDate && (
-                      <p className="text-sm text-red-500">{errors.arrivalDate}</p>
-                    )}
+                    <Input id="arrivalDate" name="arrivalDate" type="date" value={formData.arrivalDate} onChange={handleChange} className={errors.arrivalDate ? 'border-red-500' : ''} />
+                    {errors.arrivalDate && <p className="text-sm text-red-500">{errors.arrivalDate}</p>}
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="vendor">Vendor *</Label>
-                    <Input
-                      id="vendor"
-                      name="vendor"
-                      value={formData.vendor}
-                      onChange={handleChange}
-                      placeholder="e.g., Tech Solutions Inc."
-                      className={errors.vendor ? 'border-red-500' : ''}
-                    />
-                    {errors.vendor && (
-                      <p className="text-sm text-red-500">{errors.vendor}</p>
-                    )}
+                    <Input id="vendor" name="vendor" value={formData.vendor} onChange={handleChange} placeholder="e.g., Tech Solutions Inc." className={errors.vendor ? 'border-red-500' : ''} />
+                    {errors.vendor && <p className="text-sm text-red-500">{errors.vendor}</p>}
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="invoiceNumber">Invoice Number</Label>
-                    <Input
-                      id="invoiceNumber"
-                      name="invoiceNumber"
-                      value={formData.invoiceNumber}
-                      onChange={handleChange}
-                      placeholder="e.g., INV-2024-0001"
-                    />
+                    <Input id="invoiceNumber" name="invoiceNumber" value={formData.invoiceNumber} onChange={handleChange} placeholder="e.g., INV-2024-0001" />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="billDate">Bill Date</Label>
-                    <Input
-                      id="billDate"
-                      name="billDate"
-                      type="date"
-                      value={formData.billDate}
-                      onChange={handleChange}
-                    />
+                    <Input id="billDate" name="billDate" type="date" value={formData.billDate} onChange={handleChange} />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="billAmount">Bill Amount</Label>
-                    <Input
-                      id="billAmount"
-                      name="billAmount"
-                      type="number"
-                      step="0.01"
-                      value={formData.billAmount}
-                      onChange={handleChange}
-                      placeholder="0.00"
-                      className={errors.billAmount ? 'border-red-500' : ''}
-                    />
-                    {errors.billAmount && (
-                      <p className="text-sm text-red-500">{errors.billAmount}</p>
-                    )}
+                    <Input id="billAmount" name="billAmount" type="number" step="0.01" value={formData.billAmount} onChange={handleChange} placeholder="0.00" className={errors.billAmount ? 'border-red-500' : ''} />
+                    {errors.billAmount && <p className="text-sm text-red-500">{errors.billAmount}</p>}
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="cost">Cost *</Label>
-                    <Input
-                      id="cost"
-                      name="cost"
-                      type="number"
-                      step="0.01"
-                      value={formData.cost}
-                      onChange={handleChange}
-                      placeholder="0.00"
-                      className={errors.cost ? 'border-red-500' : ''}
-                    />
-                    {errors.cost && (
-                      <p className="text-sm text-red-500">{errors.cost}</p>
-                    )}
+                    <Input id="cost" name="cost" type="number" step="0.01" value={formData.cost} onChange={handleChange} placeholder="0.00" className={errors.cost ? 'border-red-500' : ''} />
+                    {errors.cost && <p className="text-sm text-red-500">{errors.cost}</p>}
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="quantity">Quantity *</Label>
-                    <Input
-                      id="quantity"
-                      name="quantity"
-                      type="number"
-                      min="1"
-                      value={formData.quantity}
-                      onChange={handleChange}
-                      className={errors.quantity ? 'border-red-500' : ''}
-                    />
-                    {errors.quantity && (
-                      <p className="text-sm text-red-500">{errors.quantity}</p>
-                    )}
+                    <Input id="quantity" name="quantity" type="number" min="1" value={formData.quantity} onChange={handleChange} className={errors.quantity ? 'border-red-500' : ''} />
+                    {errors.quantity && <p className="text-sm text-red-500">{errors.quantity}</p>}
                   </div>
                 </div>
               </div>
 
-              {/* Warranty Information */}
+              {/* Warranty */}
               <div className="border-b pb-6">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-1 bg-primary rounded"></div>
@@ -553,15 +414,8 @@ export default function DeviceForm() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="warrantyStart">Warranty Start Date</Label>
-                    <Input
-                      id="warrantyStart"
-                      name="warrantyStart"
-                      type="date"
-                      value={formData.warrantyStart}
-                      onChange={handleChange}
-                    />
+                    <Input id="warrantyStart" name="warrantyStart" type="date" value={formData.warrantyStart} onChange={handleChange} />
                   </div>
-
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="warrantyEnd">Warranty End Date</Label>
@@ -580,28 +434,12 @@ export default function DeviceForm() {
                         No Expiry
                       </label>
                     </div>
-                    <Input
-                      id="warrantyEnd"
-                      name="warrantyEnd"
-                      type="date"
-                      value={formData.warrantyEnd}
-                      onChange={handleChange}
-                      disabled={noWarrantyExpiry}
-                    />
+                    <Input id="warrantyEnd" name="warrantyEnd" type="date" value={formData.warrantyEnd} onChange={handleChange} disabled={noWarrantyExpiry} />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="warrantyYears">Add Years</Label>
-                    <Select
-                      value={warrantyYears}
-                      onValueChange={(value) => {
-                        setWarrantyYears(value);
-                        applyWarrantyYears(value);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select years" />
-                      </SelectTrigger>
+                    <Select value={warrantyYears} onValueChange={(v) => { setWarrantyYears(v); applyWarrantyYears(v); }}>
+                      <SelectTrigger><SelectValue placeholder="Select years" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="manual">Manual Entry</SelectItem>
                         <SelectItem value="1">1 Year</SelectItem>
@@ -616,7 +454,7 @@ export default function DeviceForm() {
                 </div>
               </div>
 
-              {/* Assignment Information */}
+              {/* Assignment */}
               <div className="border-b pb-6">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="h-8 w-1 bg-primary rounded"></div>
@@ -625,59 +463,32 @@ export default function DeviceForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="status">Status</Label>
-                    <Select value={formData.status} onValueChange={(value) => handleSelectChange('status', value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
+                    <Select value={formData.status} onValueChange={(v) => handleSelectChange('status', v)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {DEVICE_STATUS.map(status => (
-                          <SelectItem key={status} value={status}>{status}</SelectItem>
-                        ))}
+                        {DEVICE_STATUS.map(s => <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="departmentId">Department</Label>
-                    <Select value={formData.departmentId} onValueChange={(value) => handleSelectChange('departmentId', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
+                    <Select value={formData.departmentId} onValueChange={(v) => handleSelectChange('departmentId', v)}>
+                      <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Not Assigned</SelectItem>
-                        {mockDepartments.map(dept => (
-                          <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
-                        ))}
+                        {departments.map((dept: any) => <SelectItem key={dept._id || dept.id} value={dept._id || dept.id}>{dept.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="locationId">Location</Label>
-                    <Select value={formData.locationId} onValueChange={(value) => handleSelectChange('locationId', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select location" />
-                      </SelectTrigger>
+                    <Select value={formData.locationId} onValueChange={(v) => handleSelectChange('locationId', v)}>
+                      <SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Not Assigned</SelectItem>
-                        {mockLocations.map(loc => (
-                          <SelectItem key={loc.id} value={loc.id}>
-                            {loc.building} - {loc.floor} - {loc.room}
-                          </SelectItem>
-                        ))}
+                        {locations.map((loc: any) => <SelectItem key={loc._id || loc.id} value={loc._id || loc.id}>{loc.building} - {loc.floor} - {loc.room}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="inchargeUserId">In-Charge User ID</Label>
-                    <Input
-                      id="inchargeUserId"
-                      name="inchargeUserId"
-                      value={formData.inchargeUserId}
-                      onChange={handleChange}
-                      placeholder="User ID"
-                    />
                   </div>
                 </div>
               </div>
@@ -696,28 +507,14 @@ export default function DeviceForm() {
                       placeholder="Add a feature (e.g., SFP Ports, PoE Support)"
                       onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addFeature())}
                     />
-                    <Button
-                      type="button"
-                      onClick={addFeature}
-                      variant="outline"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
+                    <Button type="button" onClick={addFeature} variant="outline"><Plus className="h-4 w-4" /></Button>
                   </div>
-
                   {formData.features.length > 0 && (
                     <div className="flex flex-wrap gap-2">
                       {formData.features.map(feature => (
-                        <div
-                          key={feature}
-                          className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center gap-2"
-                        >
+                        <div key={feature} className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center gap-2">
                           {feature}
-                          <button
-                            type="button"
-                            onClick={() => removeFeature(feature)}
-                            className="text-blue-600 hover:text-blue-900"
-                          >
+                          <button type="button" onClick={() => removeFeature(feature)} className="text-blue-600 hover:text-blue-900">
                             <X className="h-3 w-3" />
                           </button>
                         </div>
@@ -735,40 +532,15 @@ export default function DeviceForm() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="notes">Notes</Label>
-                  <Textarea
-                    id="notes"
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleChange}
-                    placeholder="Additional notes or remarks about the device"
-                    rows={4}
-                    className="bg-white"
-                  />
+                  <Textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} placeholder="Additional notes or remarks about the device" rows={4} className="bg-white" />
                 </div>
               </div>
 
-              {/* Form Actions */}
+              {/* Actions */}
               <div className="flex gap-3 pt-6 justify-between">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/inventory')}
-                  disabled={isLoading}
-                  className="px-8"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={isLoading}
-                  className="px-8 bg-primary hover:bg-primary/90"
-                >
-                  {isLoading ? (
-                    <>
-                      <span className="animate-spin mr-2">⏳</span>
-                      Saving...
-                    </>
-                  ) : id ? 'Update Device' : 'Create Device'}
+                <Button type="button" variant="outline" onClick={() => navigate('/inventory')} disabled={isLoading} className="px-8">Cancel</Button>
+                <Button type="submit" disabled={isLoading} className="px-8 bg-primary hover:bg-primary/90">
+                  {isLoading ? 'Saving...' : id ? 'Update Device' : 'Create Device'}
                 </Button>
               </div>
             </form>

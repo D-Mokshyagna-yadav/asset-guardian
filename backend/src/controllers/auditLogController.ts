@@ -151,8 +151,8 @@ export const deleteAuditLog = catchAsync(async (req: AuthenticatedRequest, res: 
     throw new AppError('Audit log not found', 404);
   }
 
-  // Only SUPER_ADMIN can delete audit logs
-  if (req.user?.role !== 'SUPER_ADMIN') {
+  // Only ADMIN can delete audit logs
+  if (req.user?.role !== 'ADMIN') {
     throw new AppError('Only administrators can delete audit logs', 403);
   }
 
@@ -165,8 +165,8 @@ export const deleteAuditLog = catchAsync(async (req: AuthenticatedRequest, res: 
 });
 
 export const deleteOldAuditLogs = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  // Only SUPER_ADMIN can delete audit logs
-  if (req.user?.role !== 'SUPER_ADMIN') {
+  // Only ADMIN can delete audit logs
+  if (req.user?.role !== 'ADMIN') {
     throw new AppError('Only administrators can delete audit logs', 403);
   }
 

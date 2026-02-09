@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type UserRole = 'SUPER_ADMIN' | 'IT_STAFF' | 'DEPARTMENT_INCHARGE';
+export type UserRole = 'ADMIN';
 
 export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
@@ -50,8 +50,8 @@ const userSchema = new Schema<IUser>({
   role: {
     type: String,
     enum: {
-      values: ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'],
-      message: 'Role must be SUPER_ADMIN, IT_STAFF, or DEPARTMENT_INCHARGE',
+      values: ['ADMIN'],
+      message: 'Role must be ADMIN',
     },
     required: [true, 'Role is required'],
   },
@@ -60,10 +60,10 @@ const userSchema = new Schema<IUser>({
     ref: 'Department',
     validate: {
       validator: function(this: IUser, value: mongoose.Types.ObjectId) {
-        // SUPER_ADMIN doesn't need a department
-        return this.role === 'SUPER_ADMIN' || value != null;
+        // ADMIN doesn't need a department
+        return true;
       },
-      message: 'IT_STAFF and DEPARTMENT_INCHARGE must belong to a department',
+      message: 'Department is optional',
     },
   },
   isActive: {

@@ -1,76 +1,28 @@
-import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { configurationApi, type RoleColorConfig } from '@/lib/api';
 import {
   LayoutDashboard,
   Monitor,
   Building2,
-  Users,
   ClipboardList,
   History,
   LogOut,
   Shield,
   Server,
-  Send,
-  CheckCircle2,
-  FileCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const DEFAULT_ROLE_COLORS: Record<string, { color: string; label: string }> = {
-  'SUPER_ADMIN': { color: 'bg-red-500/20 text-red-300', label: 'Super Admin' },
-  'IT_STAFF': { color: 'bg-blue-500/20 text-blue-300', label: 'IT Staff' },
-  'DEPARTMENT_INCHARGE': { color: 'bg-amber-500/20 text-amber-300', label: 'Department In-charge' },
-};
-
 const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'] },
-  { name: 'Inventory', href: '/inventory', icon: Monitor, roles: ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'] },
-  { name: 'Departments', href: '/departments', icon: Building2, roles: ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'] },
-  { name: 'Assignments', href: '/assignments', icon: ClipboardList, roles: ['SUPER_ADMIN', 'IT_STAFF', 'DEPARTMENT_INCHARGE'] },
-  { name: 'Requests', href: '/assignment-management', icon: FileCheck, roles: ['SUPER_ADMIN'] },
-  { name: 'Request Device', href: '/request-device', icon: Send, roles: ['IT_STAFF', 'DEPARTMENT_INCHARGE'] },
-  { name: 'Update Status', href: '/assignment-status', icon: CheckCircle2, roles: ['IT_STAFF'] },
-  { name: 'Users', href: '/users', icon: Users, roles: ['SUPER_ADMIN'] },
-  { name: 'Audit Logs', href: '/audit-logs', icon: History, roles: ['SUPER_ADMIN', 'IT_STAFF'] },
+  { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { name: 'Inventory', href: '/inventory', icon: Monitor },
+  { name: 'Departments', href: '/departments', icon: Building2 },
+  { name: 'Assignments', href: '/assignments', icon: ClipboardList },
+  { name: 'Audit Logs', href: '/audit-logs', icon: History },
 ];
 
 export function Sidebar() {
   const location = useLocation();
   const { user, logout } = useAuth();
-  const [roleColors, setRoleColors] = useState<Record<string, { color: string; label: string }>>(DEFAULT_ROLE_COLORS);
-
-  useEffect(() => {
-    const fetchRoleColors = async () => {
-      try {
-        const response = await configurationApi.getRoleColors();
-        const colors = response.data?.data || [];
-        const colorMap: Record<string, { color: string; label: string }> = {};
-        colors.forEach((config: RoleColorConfig) => {
-          colorMap[config.role] = { color: config.badgeColor, label: config.displayLabel };
-        });
-        setRoleColors(colorMap);
-      } catch (error) {
-        console.error('Error fetching role colors:', error);
-        setRoleColors(DEFAULT_ROLE_COLORS);
-      }
-    };
-
-    fetchRoleColors();
-  }, []);
-
-  const filteredNavigation = navigation.filter(
-    item => user && item.roles.includes(user.role)
-  );
-
-  const getRoleBadgeColor = (role: string) => {
-    return roleColors[role]?.color || 'bg-gray-500/20 text-gray-300';
-  };
-
-  const formatRole = (role: string) => {
-    return roleColors[role]?.label || role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
 
   return (
     <div className="flex h-screen w-64 flex-col bg-sidebar">
@@ -87,8 +39,8 @@ export function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {filteredNavigation.map((item) => {
-          const isActive = location.pathname === item.href;
+        {navigation.map((item) => {
+          const isActive = location.pathname === item.href || location.pathname.startsWith(item.href + '/');
           return (
             <Link
               key={item.name}
@@ -115,8 +67,8 @@ export function Sidebar() {
             <p className="text-sm font-medium text-sidebar-foreground truncate">
               {user?.name}
             </p>
-            <span className={cn('status-badge text-[10px]', getRoleBadgeColor(user?.role || ''))}>
-              {formatRole(user?.role || '')}
+            <span className="status-badge text-[10px] bg-red-500/20 text-red-300">
+              Admin
             </span>
           </div>
         </div>

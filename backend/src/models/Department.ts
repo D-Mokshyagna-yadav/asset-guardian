@@ -5,6 +5,8 @@ export interface IDepartment extends Document {
   name: string;
   block: string;
   hodName: string;
+  hodPhone: string;
+  hodEmail: string;
   contactEmail: string;
   createdAt: Date;
   updatedAt: Date;
@@ -31,6 +33,22 @@ const departmentSchema = new Schema<IDepartment>({
     trim: true,
     minlength: [2, 'HOD name must be at least 2 characters long'],
     maxlength: [100, 'HOD name cannot exceed 100 characters'],
+  },
+  hodPhone: {
+    type: String,
+    required: [true, 'HOD phone is required'],
+    trim: true,
+    maxlength: [20, 'HOD phone cannot exceed 20 characters'],
+  },
+  hodEmail: {
+    type: String,
+    required: [true, 'HOD email is required'],
+    lowercase: true,
+    trim: true,
+    match: [
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      'Please enter a valid HOD email address',
+    ],
   },
   contactEmail: {
     type: String,

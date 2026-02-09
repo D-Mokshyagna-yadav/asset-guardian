@@ -2,7 +2,6 @@ import axios, { AxiosResponse, AxiosError, AxiosRequestConfig } from 'axios';
 import { User, Device, Department, Location, Assignment, AuditLog } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
-const USE_MOCK_AUTH = import.meta.env.VITE_USE_MOCK_AUTH === 'true';
 
 // Create axios instance
 const api = axios.create({
@@ -38,7 +37,6 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      // Try to refresh token
       const refreshToken = localStorage.getItem('refreshToken');
       if (refreshToken) {
         try {
@@ -49,18 +47,15 @@ api.interceptors.response.use(
           const { accessToken } = response.data.data;
           localStorage.setItem('accessToken', accessToken);
           
-          // Retry original request
           originalRequest.headers.Authorization = `Bearer ${accessToken}`;
           return api(originalRequest);
         } catch (refreshError) {
-          // Refresh failed, redirect to login
           localStorage.removeItem('accessToken');
           localStorage.removeItem('refreshToken');
           window.location.href = '/login';
           return Promise.reject(refreshError);
         }
       } else {
-        // No refresh token, redirect to login
         localStorage.removeItem('accessToken');
         window.location.href = '/login';
         return Promise.reject(error);
@@ -108,36 +103,11 @@ export const authApi = {
     return api.get<ApiResponse<{ user: User }>>('/auth/profile');
   },
   
-  updateProfile: (data: Partial<User>) => api.patch<ApiResponse<{ user: User }>>('/auth/profile', data),
-  
   changePassword: (currentPassword: string, newPassword: string) =>
     api.patch<ApiResponse>('/auth/change-password', {
       currentPassword,
       newPassword,
     }),
-};
-
-// Users API
-export const usersApi = {
-  getUsers: (params?: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    role?: string;
-    isActive?: boolean;
-  }) => api.get<PaginatedResponse<User>>('/users', { params }),
-  
-  getUserById: (id: string) => api.get<ApiResponse<{ user: User }>>(`/users/${id}`),
-  
-  createUser: (data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>) => api.post<ApiResponse<{ user: User }>>('/users', data),
-  
-  updateUser: (id: string, data: Partial<User>) =>
-    api.patch<ApiResponse<{ user: User }>>(`/users/${id}`, data),
-  
-  deleteUser: (id: string) => api.delete<ApiResponse>(`/users/${id}`),
-  
-  toggleUserStatus: (id: string) =>
-    api.patch<ApiResponse<{ user: User }>>(`/users/${id}/status`),
 };
 
 // Devices API
@@ -153,7 +123,7 @@ export const devicesApi = {
   
   getDeviceById: (id: string) => api.get<ApiResponse<{ device: Device }>>(`/devices/${id}`),
   
-  createDevice: (data: Omit<Device, 'id' | 'createdAt' | 'updatedAt'>) => api.post<ApiResponse<{ device: Device }>>('/devices', data),
+  createDevice: (data: Partial<Device>) => api.post<ApiResponse<{ device: Device }>>('/devices', data),
   
   updateDevice: (id: string, data: Partial<Device>) =>
     api.patch<ApiResponse<{ device: Device }>>(`/devices/${id}`, data),
@@ -166,9 +136,6 @@ export const devicesApi = {
     byCategory: Record<string, number>;
     byDepartment: Record<string, number>;
   }>>('/devices/stats'),
-  
-  getAvailableQuantity: (id: string) =>
-    api.get<ApiResponse<{ total: number; assigned: number; available: number }>>(`/devices/${id}/availability`),
 };
 
 // Departments API
@@ -208,11 +175,6 @@ export const locationsApi = {
     api.patch<ApiResponse<{ location: Location }>>(`/locations/${id}`, data),
   
   deleteLocation: (id: string) => api.delete<ApiResponse>(`/locations/${id}`),
-  
-  getBuildings: () => api.get<ApiResponse<{ buildings: string[] }>>('/locations/buildings/list'),
-  
-  getLocationsByBuilding: (building: string) => 
-    api.get<PaginatedResponse<Location>>(`/locations/building/${building}`),
 };
 
 // Assignments API
@@ -227,20 +189,11 @@ export const assignmentsApi = {
   
   getAssignmentById: (id: string) => api.get<ApiResponse<{ assignment: Assignment }>>(`/assignments/${id}`),
   
-  createAssignment: (data: Omit<Assignment, 'id' | 'createdAt' | 'updatedAt'>) => 
+  createAssignment: (data: Partial<Assignment>) => 
     api.post<ApiResponse<{ assignment: Assignment }>>('/assignments', data),
   
   updateAssignment: (id: string, data: Partial<Assignment>) =>
     api.patch<ApiResponse<{ assignment: Assignment }>>(`/assignments/${id}`, data),
-  
-  approveAssignment: (id: string, data: { locationId?: string; departmentId?: string }) =>
-    api.post<ApiResponse<{ assignment: Assignment }>>(`/assignments/${id}/approve`, data),
-  
-  rejectAssignment: (id: string, data: { rejectionReason: string }) =>
-    api.post<ApiResponse<{ assignment: Assignment }>>(`/assignments/${id}/reject`, data),
-  
-  completeAssignment: (id: string) =>
-    api.post<ApiResponse<{ assignment: Assignment }>>(`/assignments/${id}/complete`),
   
   deleteAssignment: (id: string) => api.delete<ApiResponse>(`/assignments/${id}`),
 };
@@ -258,42 +211,17 @@ export const auditLogsApi = {
   }) => api.get<PaginatedResponse<AuditLog>>('/audit-logs', { params }),
   
   getAuditLogById: (id: string) => api.get<ApiResponse<{ log: AuditLog }>>(`/audit-logs/${id}`),
-  
-  getEntityAuditLogs: (entityType: string, entityId: string, params?: {
-    page?: number;
-    limit?: number;
-  }) => api.get<PaginatedResponse<AuditLog>>(`/audit-logs/${entityType}/${entityId}`, { params }),
-  
-  deleteAuditLog: (id: string) => api.delete<ApiResponse>(`/audit-logs/${id}`),
-  
-  deleteOldLogs: (daysOld: number) => 
-    api.post<ApiResponse>('/audit-logs/cleanup/old-logs', { daysOld }),
 };
 
 // Categories API
 export const categoriesApi = {
   getCategories: () => api.get<ApiResponse<{ categories: string[] }>>('/categories'),
-  getCategoryById: (id: string) => api.get<ApiResponse>(`/categories/${id}`),
   createCategory: (data: { name: string; description?: string }) =>
     api.post<ApiResponse>('/categories', data),
-  updateCategory: (id: string, data: { name: string; description?: string }) =>
-    api.put<ApiResponse>(`/categories/${id}`, data),
   deleteCategory: (id: string) => api.delete<ApiResponse>(`/categories/${id}`),
 };
 
 // Configuration API
-export interface UserRoleConfig {
-  value: string;
-  label: string;
-  description?: string;
-}
-
-export interface StatusStyleConfig {
-  status: string;
-  classes: string;
-  label?: string;
-}
-
 export interface RoleColorConfig {
   role: string;
   badgeColor: string;
@@ -301,13 +229,7 @@ export interface RoleColorConfig {
 }
 
 export const configurationApi = {
-  getConfiguration: () => api.get<ApiResponse>('/configuration'),
-  getConfigByKey: (key: string) => api.get<ApiResponse>(`/configuration/${key}`),
-  getUserRoles: () => api.get<ApiResponse<UserRoleConfig[]>>('/configuration/enum/user-roles'),
-  getStatusStyles: () => api.get<ApiResponse<StatusStyleConfig[]>>('/configuration/enum/status-styles'),
   getRoleColors: () => api.get<ApiResponse<RoleColorConfig[]>>('/configuration/enum/role-colors'),
-  updateConfiguration: (key: string, data: unknown) =>
-    api.put<ApiResponse>(`/configuration/${key}`, data),
 };
 
 export default api;

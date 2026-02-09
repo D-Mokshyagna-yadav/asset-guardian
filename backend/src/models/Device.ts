@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type DeviceStatus = 'IN_STOCK' | 'ISSUED' | 'INSTALLED' | 'MAINTENANCE' | 'SCRAPPED';
+export type DeviceStatus = 'IN_STOCK' | 'ASSIGNED' | 'MAINTENANCE' | 'SCRAPPED';
 
 export interface IDevice extends Document {
   _id: mongoose.Types.ObjectId;
@@ -26,10 +26,9 @@ export interface IDevice extends Document {
   status: DeviceStatus;
   departmentId?: mongoose.Types.ObjectId;
   locationId?: mongoose.Types.ObjectId;
-  inchargeUserId?: mongoose.Types.ObjectId;
   features?: string[];
   notes?: string;
-  createdBy: mongoose.Types.ObjectId;
+  createdBy?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -158,8 +157,8 @@ const deviceSchema = new Schema<IDevice>({
   status: {
     type: String,
     enum: {
-      values: ['IN_STOCK', 'ISSUED', 'INSTALLED', 'MAINTENANCE', 'SCRAPPED'],
-      message: 'Status must be IN_STOCK, ISSUED, INSTALLED, MAINTENANCE, or SCRAPPED',
+      values: ['IN_STOCK', 'ASSIGNED', 'MAINTENANCE', 'SCRAPPED'],
+      message: 'Status must be IN_STOCK, ASSIGNED, MAINTENANCE, or SCRAPPED',
     },
     required: [true, 'Status is required'],
     default: 'IN_STOCK',
@@ -171,10 +170,6 @@ const deviceSchema = new Schema<IDevice>({
   locationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Location',
-  },
-  inchargeUserId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
   },
   features: [{
     type: String,
@@ -189,7 +184,6 @@ const deviceSchema = new Schema<IDevice>({
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Created by user is required'],
   },
 }, {
   timestamps: true,

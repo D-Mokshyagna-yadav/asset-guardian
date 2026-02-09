@@ -1,17 +1,12 @@
-export type UserRole = 'SUPER_ADMIN' | 'IT_STAFF' | 'DEPARTMENT_INCHARGE';
+export type DeviceStatus = 'IN_STOCK' | 'ASSIGNED' | 'MAINTENANCE' | 'SCRAPPED';
 
-export type DeviceStatus = 'IN_STOCK' | 'ISSUED' | 'INSTALLED' | 'MAINTENANCE' | 'SCRAPPED';
-
-export type AssignmentStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'PENDING' | 'COMPLETED' | 'MAINTENANCE';
-
-export type RequestReason = 'INSTALLATION' | 'MAINTENANCE' | 'REPLACEMENT_MALFUNCTION' | 'UPGRADE' | 'NEW_REQUIREMENT' | 'OTHER';
+export type AssignmentStatus = 'ACTIVE' | 'RETURNED' | 'MAINTENANCE';
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  role: UserRole;
-  departmentId?: string | Department;
+  role: 'ADMIN';
   isActive: boolean;
   lastLogin?: string;
   createdAt: string;
@@ -23,6 +18,8 @@ export interface Department {
   name: string;
   block: string;
   hodName: string;
+  hodPhone: string;
+  hodEmail: string;
   contactEmail: string;
   createdAt: string;
   updatedAt: string;
@@ -62,10 +59,8 @@ export interface Device {
   status: DeviceStatus;
   departmentId?: string | Department;
   locationId?: string | Location;
-  inchargeUserId?: string | User;
   features?: string[];
   notes?: string;
-  createdBy: string | User;
   createdAt: string;
   updatedAt: string;
 }
@@ -74,17 +69,12 @@ export interface Assignment {
   id: string;
   deviceId: string | Device;
   departmentId: string | Department;
-  locationId: string | Location;
-  requestedBy: string | User;
+  locationId?: string | Location;
   quantity: number;
-  reason: RequestReason;
   notes?: string;
-  approvedBy?: string | User;
   status: AssignmentStatus;
-  remarks?: string;
-  assignedAt?: string;
-  completedAt?: string;
-  rejectedAt?: string;
+  assignedAt: string;
+  returnedAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -94,13 +84,10 @@ export interface AuditLog {
   entityType: string;
   entityId: string;
   action: string;
-  performedBy: string | User;
+  performedBy: string;
   oldData?: Record<string, unknown>;
   newData?: Record<string, unknown>;
   timestamp: string;
-  ipAddress: string;
-  userAgent?: string;
-  sessionId?: string;
 }
 
 export interface AuthState {

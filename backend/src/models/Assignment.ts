@@ -1,23 +1,17 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
-export type AssignmentStatus = 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'PENDING' | 'COMPLETED' | 'MAINTENANCE';
-export type RequestReason = 'INSTALLATION' | 'MAINTENANCE' | 'REPLACEMENT_MALFUNCTION' | 'UPGRADE' | 'NEW_REQUIREMENT' | 'OTHER';
+export type AssignmentStatus = 'ACTIVE' | 'RETURNED' | 'MAINTENANCE';
 
 export interface IAssignment extends Document {
   _id: mongoose.Types.ObjectId;
   deviceId: mongoose.Types.ObjectId;
   departmentId: mongoose.Types.ObjectId;
-  locationId: mongoose.Types.ObjectId;
-  requestedBy: mongoose.Types.ObjectId;
+  locationId?: mongoose.Types.ObjectId;
   quantity: number;
-  reason: RequestReason;
   notes?: string;
-  approvedBy?: mongoose.Types.ObjectId;
   status: AssignmentStatus;
-  remarks?: string;
-  assignedAt?: Date;
-  completedAt?: Date;
-  rejectedAt?: Date;
+  assignedAt: Date;
+  returnedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -36,12 +30,6 @@ const assignmentSchema = new Schema<IAssignment>({
   locationId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Location',
-    required: [true, 'Location is required'],
-  },
-  requestedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: [true, 'Requested by user is required'],
   },
   quantity: {
     type: Number,
@@ -52,44 +40,25 @@ const assignmentSchema = new Schema<IAssignment>({
       message: 'Quantity must be a whole number',
     },
   },
-  reason: {
-    type: String,
-    enum: {
-      values: ['INSTALLATION', 'MAINTENANCE', 'REPLACEMENT_MALFUNCTION', 'UPGRADE', 'NEW_REQUIREMENT', 'OTHER'],
-      message: 'Invalid reason for assignment',
-    },
-    required: [true, 'Reason is required'],
-  },
   notes: {
     type: String,
     trim: true,
     maxlength: [1000, 'Notes cannot exceed 1000 characters'],
   },
-  approvedBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-  },
   status: {
     type: String,
     enum: {
-      values: ['REQUESTED', 'APPROVED', 'REJECTED', 'PENDING', 'COMPLETED', 'MAINTENANCE'],
+      values: ['ACTIVE', 'RETURNED', 'MAINTENANCE'],
       message: 'Invalid assignment status',
     },
     required: [true, 'Status is required'],
-    default: 'REQUESTED',
-  },
-  remarks: {
-    type: String,
-    trim: true,
-    maxlength: [1000, 'Remarks cannot exceed 1000 characters'],
+    default: 'ACTIVE',
   },
   assignedAt: {
     type: Date,
+    default: Date.now,
   },
-  completedAt: {
-    type: Date,
-  },
-  rejectedAt: {
+  returnedAt: {
     type: Date,
   },
 }, {
@@ -107,32 +76,9 @@ const assignmentSchema = new Schema<IAssignment>({
 // Indexes
 assignmentSchema.index({ deviceId: 1 });
 assignmentSchema.index({ departmentId: 1 });
-assignmentSchema.index({ requestedBy: 1 });
 assignmentSchema.index({ status: 1 });
 assignmentSchema.index({ createdAt: -1 });
-assignmentSchema.index({ reason: 1 });
-
-// Compound indexes for common queries
 assignmentSchema.index({ status: 1, createdAt: -1 });
 assignmentSchema.index({ departmentId: 1, status: 1 });
-
-// Pre-save middleware to set timestamp fields
-assignmentSchema.pre('save', function(next) {
-  if (this.isModified('status')) {
-    const now = new Date();
-    switch (this.status) {
-      case 'APPROVED':
-        if (!this.assignedAt) this.assignedAt = now;
-        break;
-      case 'REJECTED':
-        if (!this.rejectedAt) this.rejectedAt = now;
-        break;
-      case 'COMPLETED':
-        if (!this.completedAt) this.completedAt = now;
-        break;
-    }
-  }
-  next();
-});
 
 export const Assignment = mongoose.model<IAssignment>('Assignment', assignmentSchema);

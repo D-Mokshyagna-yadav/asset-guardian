@@ -1,11 +1,14 @@
 import express from 'express';
 import { Configuration } from '../models';
-import { auth } from '../middleware/auth';
+import { authenticate, authorize } from '../middleware/auth';
 
 const router = express.Router();
 
+// All routes require authentication
+router.use(authenticate);
+
 // Get all configuration
-router.get('/', auth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const configurations = await Configuration.find();
     res.json(configurations);
@@ -16,7 +19,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Get configuration by key
-router.get('/:key', auth, async (req, res) => {
+router.get('/:key', async (req, res) => {
   try {
     const configuration = await Configuration.findOne({ key: req.params.key });
     if (!configuration) {
@@ -26,20 +29,6 @@ router.get('/:key', auth, async (req, res) => {
   } catch (error) {
     console.error('Error fetching configuration:', error);
     res.status(500).json({ error: 'Failed to fetch configuration' });
-  }
-});
-
-// Get user roles
-router.get('/enum/user-roles', async (req, res) => {
-  try {
-    const configuration = await Configuration.findOne({ key: 'USER_ROLES' });
-    if (!configuration || !configuration.userRoles) {
-      return res.status(404).json({ error: 'User roles configuration not found' });
-    }
-    res.json(configuration.userRoles);
-  } catch (error) {
-    console.error('Error fetching user roles:', error);
-    res.status(500).json({ error: 'Failed to fetch user roles' });
   }
 });
 
@@ -57,27 +46,9 @@ router.get('/enum/status-styles', async (req, res) => {
   }
 });
 
-// Get role colors
-router.get('/enum/role-colors', async (req, res) => {
-  try {
-    const configuration = await Configuration.findOne({ key: 'ROLE_COLORS' });
-    if (!configuration || !configuration.roleColors) {
-      return res.status(404).json({ error: 'Role colors configuration not found' });
-    }
-    res.json(configuration.roleColors);
-  } catch (error) {
-    console.error('Error fetching role colors:', error);
-    res.status(500).json({ error: 'Failed to fetch role colors' });
-  }
-});
-
 // Update configuration (admin only)
-router.put('/:key', auth, async (req, res) => {
+router.put('/:key', authorize('ADMIN'), async (req, res) => {
   try {
-    if (req.user?.role !== 'SUPER_ADMIN') {
-      return res.status(403).json({ error: 'Only admins can update configuration' });
-    }
-
     const configuration = await Configuration.findOneAndUpdate(
       { key: req.params.key },
       req.body,

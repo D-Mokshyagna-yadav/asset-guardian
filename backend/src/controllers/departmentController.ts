@@ -17,6 +17,14 @@ export const departmentValidation = [
     .trim()
     .isLength({ min: 2, max: 100 })
     .withMessage('HOD name must be between 2 and 100 characters'),
+  body('hodPhone')
+    .trim()
+    .isLength({ min: 2, max: 20 })
+    .withMessage('HOD phone must be between 2 and 20 characters'),
+  body('hodEmail')
+    .isEmail()
+    .normalizeEmail()
+    .withMessage('Please provide a valid HOD email'),
   body('contactEmail')
     .isEmail()
     .normalizeEmail()
@@ -82,7 +90,7 @@ export const createDepartment = catchAsync(async (req: AuthenticatedRequest, res
     throw new AppError('Invalid input data: ' + errors.array().map(e => e.msg).join(', '), 400);
   }
 
-  const { name, block, hodName, contactEmail } = req.body;
+  const { name, block, hodName, hodPhone, hodEmail, contactEmail } = req.body;
 
   // Check if department name already exists
   const existingDepartment = await Department.findOne({ name });
@@ -94,6 +102,8 @@ export const createDepartment = catchAsync(async (req: AuthenticatedRequest, res
     name,
     block,
     hodName,
+    hodPhone,
+    hodEmail,
     contactEmail,
   });
 
@@ -111,7 +121,7 @@ export const updateDepartment = catchAsync(async (req: AuthenticatedRequest, res
   }
 
   const { id } = req.params;
-  const { name, block, hodName, contactEmail } = req.body;
+  const { name, block, hodName, hodPhone, hodEmail, contactEmail } = req.body;
 
   // Check if department exists
   const department = await Department.findById(id);
@@ -129,7 +139,7 @@ export const updateDepartment = catchAsync(async (req: AuthenticatedRequest, res
 
   const updatedDepartment = await Department.findByIdAndUpdate(
     id,
-    { name, block, hodName, contactEmail },
+    { name, block, hodName, hodPhone, hodEmail, contactEmail },
     { new: true, runValidators: true }
   );
 

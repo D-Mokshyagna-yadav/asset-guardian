@@ -15,34 +15,34 @@ const router = Router();
 // All audit log routes require authentication
 router.use(authenticate);
 
-// Get audit log statistics - SUPER_ADMIN only
-router.get('/stats', authorize('SUPER_ADMIN'), getAuditLogStats);
+// Get audit log statistics - ADMIN only
+router.get('/stats', authorize('ADMIN'), getAuditLogStats);
 
-// Get all audit logs - SUPER_ADMIN and IT_STAFF
-router.get('/', authorize('SUPER_ADMIN', 'IT_STAFF'), getAuditLogs);
+// Get all audit logs - ADMIN
+router.get('/', authorize('ADMIN'), getAuditLogs);
 
-// Get audit logs for a specific entity - SUPER_ADMIN and IT_STAFF
+// Get audit logs for a specific entity - ADMIN
 router.get(
   '/:entityType/:entityId',
-  authorize('SUPER_ADMIN', 'IT_STAFF'),
+  authorize('ADMIN'),
   getAuditLogsByEntity
 );
 
-// Get audit log by ID - SUPER_ADMIN and IT_STAFF
-router.get('/:id', authorize('SUPER_ADMIN', 'IT_STAFF'), getAuditLogById);
+// Get audit log by ID - ADMIN
+router.get('/:id', authorize('ADMIN'), getAuditLogById);
 
-// Delete audit log - SUPER_ADMIN only
+// Delete audit log - ADMIN only
 router.delete(
   '/:id',
-  authorize('SUPER_ADMIN'),
+  authorize('ADMIN'),
   auditLogger('DELETE', 'AuditLog'),
   deleteAuditLog
 );
 
-// Delete old audit logs - SUPER_ADMIN only
+// Delete old audit logs - ADMIN only
 router.post(
   '/cleanup/old-logs',
-  authorize('SUPER_ADMIN'),
+  authorize('ADMIN'),
   auditLogger('DELETE', 'AuditLog'),
   deleteOldAuditLogs
 );

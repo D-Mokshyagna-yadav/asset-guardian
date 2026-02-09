@@ -31,7 +31,7 @@ const auditLogSchema = new Schema<IAuditLog>({
     type: String,
     required: [true, 'Action is required'],
     enum: {
-      values: ['CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE', 'APPROVED', 'REJECTED', 'ROLE_CHANGE', 'LOGIN', 'LOGOUT'],
+      values: ['CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE', 'LOGIN', 'LOGOUT'],
       message: 'Invalid action type',
     },
   },

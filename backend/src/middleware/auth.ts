@@ -254,7 +254,7 @@ export const authorizeOwnerOrAdmin = (resourceUserIdField = 'userId') => {
 
     const resourceUserId = req.params[resourceUserIdField] || req.body[resourceUserIdField];
     const isOwner = req.user._id.toString() === resourceUserId;
-    const isAdmin = req.user.role === 'SUPER_ADMIN';
+    const isAdmin = req.user.role === 'ADMIN';
 
     if (!isOwner && !isAdmin) {
       res.status(403).json({

@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { departmentsApi, devicesApi, locationsApi, assignmentsApi } from '@/lib/api';
+import { departmentsApi, devicesApi, assignmentsApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
-import { Department, Device, Location, Assignment } from '@/types';
+import { Department, Device, Assignment } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,23 +11,52 @@ import {
   Building2,
   Users,
   Mail,
+  Phone,
   Monitor,
   MapPin,
   Calendar,
   Eye,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 
 export default function DepartmentDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  
-  const department = mockDepartments.find(d => d.id === id);
-  const departmentDevices = mockDevices.filter(d => d.departmentId === id);
-  const departmentAssignments = mockAssignments.filter(a => a.departmentId === id);
 
-  const canEdit = user?.role === 'SUPER_ADMIN';
+  const [department, setDepartment] = useState<Department | null>(null);
+  const [departmentDevices, setDepartmentDevices] = useState<Device[]>([]);
+  const [departmentAssignments, setDepartmentAssignments] = useState<Assignment[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadData = async () => {
+      if (!id) return;
+      try {
+        const [deptRes, devicesRes, assignRes] = await Promise.all([
+          departmentsApi.getDepartmentById(id),
+          devicesApi.getDevices({ departmentId: id, limit: 100 }),
+          assignmentsApi.getAssignments({ departmentId: id, limit: 100 }),
+        ]);
+        setDepartment(deptRes.data.data?.department || null);
+        setDepartmentDevices(devicesRes.data.data || []);
+        setDepartmentAssignments(assignRes.data.data || []);
+      } catch (error) {
+        console.error('Failed to load department details:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="p-6 lg:p-8 animate-fade-in">
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!department) {
     return (
@@ -43,13 +72,8 @@ export default function DepartmentDetails() {
     );
   }
 
-  const getLocationName = (locId: string) => {
-    const loc = mockLocations.find(l => l.id === locId);
-    return loc ? `${loc.building}, ${loc.room}` : '—';
-  };
-
   const devicesByStatus = {
-    installed: departmentDevices.filter(d => d.status === 'INSTALLED').length,
+    assigned: departmentDevices.filter(d => d.status === 'ASSIGNED').length,
     inStock: departmentDevices.filter(d => d.status === 'IN_STOCK').length,
     maintenance: departmentDevices.filter(d => d.status === 'MAINTENANCE').length,
   };
@@ -76,14 +100,12 @@ export default function DepartmentDetails() {
             </div>
           </div>
         </div>
-        {canEdit && (
-          <Link to={`/departments/${id}/edit`}>
-            <Button variant="outline">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Department
-            </Button>
-          </Link>
-        )}
+        <Link to={`/departments/${id}/edit`}>
+          <Button variant="outline">
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Department
+          </Button>
+        </Link>
       </div>
 
       {/* Stats */}
@@ -108,8 +130,8 @@ export default function DepartmentDetails() {
                 <Monitor className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{devicesByStatus.installed}</p>
-                <p className="text-xs text-muted-foreground">Installed</p>
+                <p className="text-2xl font-bold">{devicesByStatus.assigned}</p>
+                <p className="text-xs text-muted-foreground">Assigned</p>
               </div>
             </div>
           </CardContent>
@@ -161,7 +183,6 @@ export default function DepartmentDetails() {
                       <tr>
                         <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Device</th>
                         <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Category</th>
-                        <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Location</th>
                         <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Status</th>
                         <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3">Action</th>
                       </tr>
@@ -176,7 +197,6 @@ export default function DepartmentDetails() {
                             </div>
                           </td>
                           <td className="px-4 py-3 text-sm text-muted-foreground">{device.category}</td>
-                          <td className="px-4 py-3 text-sm text-muted-foreground">{getLocationName(device.locationId || '')}</td>
                           <td className="px-4 py-3">
                             <StatusBadge status={device.status} />
                           </td>
@@ -198,72 +218,24 @@ export default function DepartmentDetails() {
             </CardContent>
           </Card>
 
-          {/* Device Locations */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <MapPin className="h-5 w-5 text-primary" />
-                Devices by Location
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {departmentDevices.length > 0 ? (
-                <div className="space-y-4">
-                  {(() => {
-                    const devicesByLocation = departmentDevices.reduce((acc, device) => {
-                      const locId = device.locationId || 'unassigned';
-                      if (!acc[locId]) {
-                        acc[locId] = [];
-                      }
-                      acc[locId].push(device);
-                      return acc;
-                    }, {} as Record<string, typeof departmentDevices>);
-
-                    return Object.entries(devicesByLocation).map(([locId, devices]) => (
-                      <div key={locId} className="p-4 rounded-lg border border-border bg-muted/30">
-                        <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-primary" />
-                          {getLocationName(locId === 'unassigned' ? '' : locId)}
-                        </h4>
-                        <div className="space-y-2">
-                          {devices.map(device => (
-                            <div key={device.id} className="flex items-center justify-between p-2 rounded bg-background text-xs">
-                              <div>
-                                <p className="font-medium">{device.deviceName}</p>
-                                <p className="text-muted-foreground">{device.assetTag}</p>
-                              </div>
-                              <StatusBadge status={device.status} />
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">No device locations assigned</p>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Recent Assignments */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <MapPin className="h-5 w-5 text-primary" />
-                Recent Assignments ({departmentAssignments.length})
+                Assignments ({departmentAssignments.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               {departmentAssignments.length > 0 ? (
                 <div className="space-y-3">
                   {departmentAssignments.map((assignment) => {
-                    const device = mockDevices.find(d => d.id === assignment.deviceId);
+                    const deviceObj = typeof assignment.deviceId === 'object' ? assignment.deviceId : null;
                     return (
                       <div key={assignment.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                         <div>
-                          <p className="text-sm font-medium">{device?.deviceName || 'Unknown Device'}</p>
-                          <p className="text-xs text-muted-foreground">{getLocationName(assignment.locationId)}</p>
+                          <p className="text-sm font-medium">{deviceObj?.deviceName || 'Device'}</p>
+                          <p className="text-xs text-muted-foreground">Qty: {assignment.quantity}</p>
                         </div>
                         <div className="flex items-center gap-3">
                           <StatusBadge status={assignment.status} />
@@ -286,12 +258,12 @@ export default function DepartmentDetails() {
 
         {/* Sidebar */}
         <div className="space-y-6">
-          {/* Contact Information */}
+          {/* HOD & Contact Information */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Users className="h-5 w-5 text-primary" />
-                Contact Information
+                HOD & Contact
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -300,8 +272,26 @@ export default function DepartmentDetails() {
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Head of Department</p>
                   <p className="text-sm font-medium">{department.hodName}</p>
                 </div>
+                {department.hodPhone && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">HOD Phone</p>
+                    <a href={`tel:${department.hodPhone}`} className="text-sm font-medium text-primary hover:underline flex items-center gap-2">
+                      <Phone className="h-4 w-4" />
+                      {department.hodPhone}
+                    </a>
+                  </div>
+                )}
+                {department.hodEmail && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">HOD Email</p>
+                    <a href={`mailto:${department.hodEmail}`} className="text-sm font-medium text-primary hover:underline flex items-center gap-2">
+                      <Mail className="h-4 w-4" />
+                      {department.hodEmail}
+                    </a>
+                  </div>
+                )}
                 <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Email</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Department Email</p>
                   <a href={`mailto:${department.contactEmail}`} className="text-sm font-medium text-primary hover:underline flex items-center gap-2">
                     <Mail className="h-4 w-4" />
                     {department.contactEmail}

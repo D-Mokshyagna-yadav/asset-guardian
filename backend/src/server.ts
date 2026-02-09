@@ -11,7 +11,6 @@ import { globalErrorHandler, notFound } from './middleware/errorHandler';
 
 // Import routes
 import authRoutes from './routes/auth';
-import userRoutes from './routes/users';
 import deviceRoutes from './routes/devices';
 import departmentRoutes from './routes/departments';
 import assignmentRoutes from './routes/assignments';
@@ -93,7 +92,6 @@ app.get('/api/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/departments', departmentRoutes);
 app.use('/api/assignments', assignmentRoutes);

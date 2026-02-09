@@ -30,30 +30,30 @@ router.get('/', getDevices);
 // Get device by ID - All authenticated users
 router.get('/:id', getDeviceById);
 
-// Create device - SUPER_ADMIN and IT_STAFF
+// Create device - ADMIN
 router.post(
   '/',
-  authorize('SUPER_ADMIN', 'IT_STAFF'),
+  authorize('ADMIN'),
   deviceValidation,
   handleValidationErrors,
   auditLogger('CREATE', 'Device'),
   createDevice
 );
 
-// Update device - SUPER_ADMIN and IT_STAFF
+// Update device - ADMIN
 router.patch(
   '/:id',
-  authorize('SUPER_ADMIN', 'IT_STAFF'),
+  authorize('ADMIN'),
   deviceValidation,
   handleValidationErrors,
   auditLogger('UPDATE', 'Device'),
   updateDevice
 );
 
-// Delete device - SUPER_ADMIN only
+// Delete device - ADMIN only
 router.delete(
   '/:id',
-  authorize('SUPER_ADMIN'),
+  authorize('ADMIN'),
   auditLogger('DELETE', 'Device'),
   deleteDevice
 );

@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { departmentsApi, locationsApi, auditLogsApi } from '@/lib/api';
+import { devicesApi, departmentsApi, locationsApi, auditLogsApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
-import { Department, Location, AuditLog } from '@/types';
+import { Device, Department, Location, AuditLog } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,23 +19,62 @@ import {
   FileText,
   Clock,
 } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { getAssignments, getAvailableQuantity, getDevices } from '@/data/store';
 
 export default function DeviceDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  
-  const devices = getDevices();
-  const assignments = getAssignments();
-  const device = devices.find(d => d.id === id);
-  const department = mockDepartments.find(d => d.id === device?.departmentId);
-  const location = mockLocations.find(l => l.id === device?.locationId);
-  const deviceLogs = mockAuditLogs.filter(log => log.entityId === id && log.entityType === 'Device');
+  const [device, setDevice] = useState<Device | null>(null);
+  const [department, setDepartment] = useState<Department | null>(null);
+  const [location, setLocation] = useState<Location | null>(null);
+  const [deviceLogs, setDeviceLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const canEdit = user?.role === 'SUPER_ADMIN';
-  const canDelete = user?.role === 'SUPER_ADMIN';
+  useEffect(() => {
+    if (!id) return;
+    const fetchData = async () => {
+      try {
+        const res = await devicesApi.getDeviceById(id);
+        const dev = res.data.data?.device;
+        if (!dev) { setLoading(false); return; }
+        setDevice(dev);
+        if (dev.departmentId) {
+          try {
+            const deptRes = await departmentsApi.getDepartmentById(dev.departmentId as string);
+            setDepartment(deptRes.data.data?.department || null);
+          } catch {}
+        }
+        if (dev.locationId) {
+          try {
+            const locRes = await locationsApi.getLocationById(dev.locationId as string);
+            setLocation(locRes.data.data?.location || null);
+          } catch {}
+        }
+        try {
+          const logsRes = await auditLogsApi.getAuditLogs({ entityId: id, entityType: 'Device', limit: 20 } as any);
+          setDeviceLogs(logsRes.data.data || []);
+        } catch {}
+      } catch {
+        setDevice(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
+
+  const handleDelete = async () => {
+    if (!id || !confirm('Are you sure you want to delete this device?')) return;
+    try {
+      await devicesApi.deleteDevice(id);
+      navigate('/inventory');
+    } catch (err) {
+      console.error('Failed to delete device', err);
+    }
+  };
+
+  if (loading) {
+    return <div className="p-6 lg:p-8 text-center text-muted-foreground">Loading...</div>;
+  }
 
   if (!device) {
     return (
@@ -81,18 +120,14 @@ export default function DeviceDetails() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {canEdit && (
-            <Button variant="outline">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Device
-            </Button>
-          )}
-          {canDelete && (
-            <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10">
-              <Trash2 className="h-4 w-4 mr-2" />
-              Delete
-            </Button>
-          )}
+          <Button variant="outline" onClick={() => navigate(`/inventory/${id}/edit`)}>
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Device
+          </Button>
+          <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={handleDelete}>
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete
+          </Button>
         </div>
       </div>
 
@@ -111,7 +146,7 @@ export default function DeviceDetails() {
               <div className="grid sm:grid-cols-2 gap-6">
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Brand / Model</p>
-                  <p className="text-sm font-medium">{device.brand} {device.model}</p>
+                  <p className="text-sm font-medium">{device.brand} {device.deviceModel}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Category</p>
@@ -120,14 +155,6 @@ export default function DeviceDetails() {
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Quantity</p>
                   <p className="text-sm font-medium">{device.quantity}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Available</p>
-                  <p className="text-sm font-medium">
-                    {getAvailableQuantity(device, assignments) > 0
-                      ? getAvailableQuantity(device, assignments)
-                      : 'No stock'}
-                  </p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Serial Number</p>
@@ -236,7 +263,7 @@ export default function DeviceDetails() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm">
-                          <span className="font-medium">{log.performedBy}</span>
+                          <span className="font-medium">Admin</span>
                           <span className="text-muted-foreground"> performed </span>
                           <span className="font-medium">{log.action.replace(/_/g, ' ')}</span>
                         </p>
@@ -303,7 +330,7 @@ export default function DeviceDetails() {
                 <div className="space-y-3">
                   <div className="space-y-1">
                     <p className="text-xs text-muted-foreground">Name</p>
-                    <Link to={`/departments/${department.id}`} className="text-sm font-medium text-primary hover:underline">
+                    <Link to={`/departments/${(department as any)._id || department.id}`} className="text-sm font-medium text-primary hover:underline">
                       {department.name}
                     </Link>
                   </div>

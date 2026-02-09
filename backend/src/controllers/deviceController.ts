@@ -41,7 +41,7 @@ export const deviceValidation = [
     .withMessage('Quantity must be at least 1'),
   body('status')
     .optional()
-    .isIn(['IN_STOCK', 'ISSUED', 'INSTALLED', 'MAINTENANCE', 'SCRAPPED'])
+    .isIn(['IN_STOCK', 'ASSIGNED', 'MAINTENANCE', 'SCRAPPED'])
     .withMessage('Invalid device status'),
 ];
 
@@ -76,7 +76,6 @@ export const getDevices = catchAsync(async (req: AuthenticatedRequest, res: Resp
   const devices = await Device.find(query)
     .populate('departmentId')
     .populate('locationId')
-    .populate('inchargeUserId')
     .populate('createdBy')
     .sort({ createdAt: -1 })
     .skip(skip)
@@ -102,7 +101,6 @@ export const getDeviceById = catchAsync(async (req: AuthenticatedRequest, res: R
   const device = await Device.findById(req.params.id)
     .populate('departmentId')
     .populate('locationId')
-    .populate('inchargeUserId')
     .populate('createdBy');
 
   if (!device) {
@@ -142,7 +140,6 @@ export const createDevice = catchAsync(async (req: AuthenticatedRequest, res: Re
   const populatedDevice = await Device.findById(device._id)
     .populate('departmentId')
     .populate('locationId')
-    .populate('inchargeUserId')
     .populate('createdBy');
 
   res.status(201).json({
@@ -179,7 +176,6 @@ export const updateDevice = catchAsync(async (req: AuthenticatedRequest, res: Re
   )
     .populate('departmentId')
     .populate('locationId')
-    .populate('inchargeUserId')
     .populate('createdBy');
 
   if (!device) {
@@ -199,11 +195,11 @@ export const deleteDevice = catchAsync(async (req: AuthenticatedRequest, res: Re
   // Check if device has pending assignments
   const pendingAssignments = await Assignment.findOne({
     deviceId: id,
-    status: { $in: ['REQUESTED', 'APPROVED', 'PENDING'] },
+    status: 'ACTIVE',
   });
 
   if (pendingAssignments) {
-    throw new AppError('Cannot delete device with pending assignments', 400);
+    throw new AppError('Cannot delete device with active assignments', 400);
   }
 
   const device = await Device.findByIdAndDelete(id);
@@ -230,14 +226,9 @@ export const getDeviceStats = catchAsync(async (req: AuthenticatedRequest, res: 
             $cond: [{ $eq: ['$status', 'IN_STOCK'] }, 1, 0]
           }
         },
-        issued: {
+        assigned: {
           $sum: {
-            $cond: [{ $eq: ['$status', 'ISSUED'] }, 1, 0]
-          }
-        },
-        installed: {
-          $sum: {
-            $cond: [{ $eq: ['$status', 'INSTALLED'] }, 1, 0]
+            $cond: [{ $eq: ['$status', 'ASSIGNED'] }, 1, 0]
           }
         },
         maintenance: {
@@ -273,8 +264,7 @@ export const getDeviceStats = catchAsync(async (req: AuthenticatedRequest, res: 
         totalDevices: 0,
         totalValue: 0,
         inStock: 0,
-        issued: 0,
-        installed: 0,
+        assigned: 0,
         maintenance: 0,
         scrapped: 0,
       },
@@ -291,12 +281,12 @@ export const getAvailableQuantity = catchAsync(async (req: AuthenticatedRequest,
     throw new AppError('Device not found', 404);
   }
 
-  // Calculate assigned quantity from approved assignments
+  // Calculate assigned quantity from active assignments
   const assignedQuantity = await Assignment.aggregate([
     {
       $match: {
         deviceId: device._id,
-        status: { $in: ['APPROVED', 'COMPLETED'] },
+        status: 'ACTIVE',
       }
     },
     {

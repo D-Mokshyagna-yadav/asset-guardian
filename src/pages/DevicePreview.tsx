@@ -3,22 +3,51 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Badge } from '@/components/ui/badge';
-import { departmentsApi, locationsApi } from '@/lib/api';
+import { devicesApi, departmentsApi, locationsApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
-import { Department, Location } from '@/types';
-import { getDevices, getAssignments } from '@/data/store';
-import { calculateDeviceQuantities } from '@/utils/assignmentCalculations';
+import { Device, Department, Location } from '@/types';
 import { ArrowLeft, Edit, Trash2, Package, MapPin, DollarSign, Zap, FileText, Calendar, Shield, AlertTriangle, CheckCircle2, Clock, Eye } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
 
 export default function DevicePreview() {
   const navigate = useNavigate();
   const { id } = useParams();
-  const { user } = useAuth();
-  const devices = getDevices();
-  const assignments = getAssignments();
-  
-  const device = devices.find(d => d.id === id);
+  const [device, setDevice] = useState<Device | null>(null);
+  const [department, setDepartment] = useState<Department | null>(null);
+  const [location, setLocation] = useState<Location | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    const fetchData = async () => {
+      try {
+        const res = await devicesApi.getDeviceById(id);
+        const dev = res.data.data?.device;
+        if (!dev) { setLoading(false); return; }
+        setDevice(dev);
+        if (dev.departmentId) {
+          try {
+            const deptRes = await departmentsApi.getDepartmentById(dev.departmentId as string);
+            setDepartment(deptRes.data.data?.department || null);
+          } catch {}
+        }
+        if (dev.locationId) {
+          try {
+            const locRes = await locationsApi.getLocationById(dev.locationId as string);
+            setLocation(locRes.data.data?.location || null);
+          } catch {}
+        }
+      } catch {
+        setDevice(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
+
+  if (loading) {
+    return <div className="p-6 lg:p-8 text-center text-muted-foreground">Loading...</div>;
+  }
 
   if (!device) {
     return (
@@ -35,13 +64,12 @@ export default function DevicePreview() {
     );
   }
 
-  const getDepartmentName = (id?: string) => {
-    return mockDepartments.find(d => d.id === id)?.name || '—';
+  const getDepartmentName = () => {
+    return department?.name || '—';
   };
 
-  const getLocationName = (id?: string) => {
-    const loc = mockLocations.find(l => l.id === id);
-    return loc ? `${loc.building}, ${loc.floor}, ${loc.room}` : '—';
+  const getLocationName = () => {
+    return location ? `${location.building}, ${location.floor}, ${location.room}` : '—';
   };
 
   const getWarrantyStatus = () => {
@@ -67,21 +95,11 @@ export default function DevicePreview() {
     }).format(amount);
   };
 
-  const availableQty = getAvailableQuantity(device, assignments);
-  const assignedQty = assignments
-    .filter(a => a.deviceId === device.id && (a.status === 'APPROVED' || a.status === 'COMPLETED'))
-    .reduce((sum, a) => sum + (a.quantity ?? 1), 0);
-  const inUse = assignedQty;
+  const isAssigned = device.status === 'ASSIGNED';
+  const finalAvailable = isAssigned ? 0 : device.quantity;
+  const finalInUse = isAssigned ? device.quantity : 0;
   
-  // Validation: ensure numbers add up correctly
-  const calculatedAvailable = Math.max(device.quantity - assignedQty, 0);
-  const actualAvailable = Math.max(availableQty, 0);
-  
-  // Use the more accurate calculation
-  const finalAvailable = calculatedAvailable;
-  const finalInUse = Math.min(assignedQty, device.quantity);
-  
-  const canEdit = user?.role === 'SUPER_ADMIN';
+  const canEdit = true;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-muted/20 to-muted/50 p-6 lg:p-8">
@@ -129,7 +147,7 @@ export default function DevicePreview() {
                   <p className="text-2xl font-bold text-foreground mb-3">{device.deviceName}</p>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">{device.category}</Badge>
-                    <Badge variant="outline">{device.brand} {device.model}</Badge>
+                    <Badge variant="outline">{device.brand} {device.deviceModel}</Badge>
                     <StatusBadge status={device.status} />
                   </div>
                 </div>
@@ -159,7 +177,7 @@ export default function DevicePreview() {
 
           <Card className="bg-blue-500/10 border-blue-500/20">
             <CardContent className="p-6">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Installed</p>
+              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Assigned</p>
               <p className="text-3xl font-bold text-blue-600">{finalInUse}</p>
               <p className="text-xs text-muted-foreground mt-1">units currently assigned</p>
             </CardContent>
@@ -221,18 +239,12 @@ export default function DevicePreview() {
               <div className="grid grid-cols-2 gap-6">
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Department</p>
-                  <p className="text-sm font-medium">{getDepartmentName(device.departmentId)}</p>
+                  <p className="text-sm font-medium">{getDepartmentName()}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Location</p>
-                  <p className="text-sm font-medium">{getLocationName(device.locationId)}</p>
+                  <p className="text-sm font-medium">{getLocationName()}</p>
                 </div>
-                {device.inchargeUserId && (
-                  <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">In-Charge User</p>
-                    <p className="text-sm font-medium">{device.inchargeUserId}</p>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -405,10 +417,13 @@ export default function DevicePreview() {
                   <Button
                     variant="destructive"
                     className="w-full"
-                    onClick={() => {
-                      if (confirm('Are you sure you want to delete this device?')) {
-                        // Delete functionality
+                    onClick={async () => {
+                      if (!id || !confirm('Are you sure you want to delete this device?')) return;
+                      try {
+                        await devicesApi.deleteDevice(id);
                         navigate('/inventory');
+                      } catch (err) {
+                        console.error('Failed to delete device', err);
                       }
                     }}
                   >

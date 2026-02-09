@@ -1,11 +1,15 @@
 import express from 'express';
 import { Category } from '../models';
-import { auth } from '../middleware/auth';
+import { authenticate, authorize } from '../middleware/auth';
+import { AuthenticatedRequest } from '../middleware/auth';
 
 const router = express.Router();
 
+// All routes require authentication
+router.use(authenticate);
+
 // Get all categories
-router.get('/', auth, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     const categories = await Category.find().sort({ name: 1 });
     res.json(categories);
@@ -16,7 +20,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Get category by ID
-router.get('/:id', auth, async (req, res) => {
+router.get('/:id', async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
     if (!category) {
@@ -30,12 +34,8 @@ router.get('/:id', auth, async (req, res) => {
 });
 
 // Create category (admin only)
-router.post('/', auth, async (req, res) => {
+router.post('/', authorize('ADMIN'), async (req, res) => {
   try {
-    if (req.user?.role !== 'SUPER_ADMIN') {
-      return res.status(403).json({ error: 'Only admins can create categories' });
-    }
-
     const { name, description } = req.body;
     const category = new Category({ name, description });
     await category.save();
@@ -47,12 +47,8 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Update category (admin only)
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', authorize('ADMIN'), async (req, res) => {
   try {
-    if (req.user?.role !== 'SUPER_ADMIN') {
-      return res.status(403).json({ error: 'Only admins can update categories' });
-    }
-
     const { name, description } = req.body;
     const category = await Category.findByIdAndUpdate(
       req.params.id,
@@ -70,12 +66,8 @@ router.put('/:id', auth, async (req, res) => {
 });
 
 // Delete category (admin only)
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', authorize('ADMIN'), async (req, res) => {
   try {
-    if (req.user?.role !== 'SUPER_ADMIN') {
-      return res.status(403).json({ error: 'Only admins can delete categories' });
-    }
-
     const category = await Category.findByIdAndDelete(req.params.id);
     if (!category) {
       return res.status(404).json({ error: 'Category not found' });

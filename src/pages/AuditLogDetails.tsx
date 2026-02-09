@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { devicesApi, departmentsApi, assignmentsApi } from '@/lib/api';
+import { auditLogsApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
-import { Device, Department, Assignment } from '@/types';
+import { AuditLog } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -25,12 +25,6 @@ const getActionColor = (action: string) => {
       return 'bg-blue-100 text-blue-800';
     case 'DELETE':
       return 'bg-red-100 text-red-800';
-    case 'APPROVED':
-      return 'bg-green-100 text-green-800';
-    case 'REJECTED':
-      return 'bg-orange-100 text-orange-800';
-    case 'ROLE_CHANGE':
-      return 'bg-purple-100 text-purple-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }
@@ -58,7 +52,7 @@ const getEntityLink = (entityType: string, entityId: string) => {
     case 'Assignment':
       return `/assignments/${entityId}`;
     case 'User':
-      return `/users/${entityId}`;
+      return null;
     default:
       return null;
   }
@@ -67,8 +61,27 @@ const getEntityLink = (entityType: string, entityId: string) => {
 export default function AuditLogDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  
-  const log = mockAuditLogs.find(l => l.id === id);
+  const [log, setLog] = useState<AuditLog | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    const fetchLog = async () => {
+      try {
+        const res = await auditLogsApi.getAuditLogById(id);
+        setLog(res.data.data?.log || null);
+      } catch {
+        setLog(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLog();
+  }, [id]);
+
+  if (loading) {
+    return <div className="p-6 lg:p-8 text-center text-muted-foreground">Loading...</div>;
+  }
 
   if (!log) {
     return (
@@ -86,27 +99,6 @@ export default function AuditLogDetails() {
 
   const EntityIcon = getEntityIcon(log.entityType);
   const entityLink = getEntityLink(log.entityType, log.entityId);
-
-  // Get related entity name for context
-  const getEntityName = () => {
-    switch (log.entityType) {
-      case 'Device':
-        return mockDevices.find(d => d.id === log.entityId)?.deviceName;
-      case 'Department':
-        return mockDepartments.find(d => d.id === log.entityId)?.name;
-      case 'Assignment':
-        const assignment = mockAssignments.find(a => a.id === log.entityId);
-        if (assignment) {
-          const device = mockDevices.find(d => d.id === assignment.deviceId);
-          return device?.deviceName ? `Assignment for ${device.deviceName}` : 'Assignment';
-        }
-        return null;
-      default:
-        return null;
-    }
-  };
-
-  const entityName = getEntityName();
 
   return (
     <div className="p-6 lg:p-8 animate-fade-in">
@@ -146,16 +138,13 @@ export default function AuditLogDetails() {
             </CardHeader>
             <CardContent>
               <p className="text-base">
-                <span className="font-medium">{log.performedBy}</span>
+                <span className="font-medium">Admin</span>
                 <span className="text-muted-foreground"> performed </span>
                 <span className={`px-2 py-0.5 rounded text-sm font-medium ${getActionColor(log.action)}`}>
                   {log.action.replace(/_/g, ' ')}
                 </span>
                 <span className="text-muted-foreground"> on </span>
                 <span className="font-medium">{log.entityType}</span>
-                {entityName && (
-                  <span className="text-muted-foreground"> ({entityName})</span>
-                )}
               </p>
             </CardContent>
           </Card>
@@ -228,12 +217,6 @@ export default function AuditLogDetails() {
                   <p className="text-xs text-muted-foreground">ID</p>
                   <p className="text-sm font-mono">{log.entityId}</p>
                 </div>
-                {entityName && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Name</p>
-                    <p className="text-sm font-medium">{entityName}</p>
-                  </div>
-                )}
                 {entityLink && (
                   <Link to={entityLink}>
                     <Button variant="outline" size="sm" className="w-full mt-2">
@@ -259,7 +242,7 @@ export default function AuditLogDetails() {
                   <User className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">{log.performedBy}</p>
+                  <p className="text-sm font-medium">Admin</p>
                 </div>
               </div>
             </CardContent>
