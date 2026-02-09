@@ -125,13 +125,44 @@ const startServer = async () => {
     await connectDB();
 
     const PORT = config.port;
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT} in ${config.nodeEnv} mode`);
       console.log(`📋 API Health Check: http://localhost:${PORT}/api/health`);
       
       if (config.nodeEnv === 'development') {
         console.log(`🔧 Frontend should connect to: http://localhost:${PORT}/api`);
       }
+    });
+
+    server.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EADDRINUSE') {
+        console.error(`❌ Port ${PORT} is already in use. Waiting for it to free...`);
+        server.close();
+        // Don't exit — let nodemon handle restart
+      } else {
+        throw err;
+      }
+    });
+
+    // Graceful shutdown for nodemon restarts
+    const shutdown = () => {
+      console.log('🛑 Received shutdown signal, closing server...');
+      server.close(() => {
+        console.log('✅ Server closed');
+        process.exit(0);
+      });
+      // Force exit after 5 seconds
+      setTimeout(() => process.exit(0), 5173);
+    };
+
+    process.on('SIGTERM', shutdown);
+    process.on('SIGINT', shutdown);
+    // nodemon sends SIGUSR2 before restart
+    process.once('SIGUSR2', () => {
+      console.log('🔄 Nodemon restart detected');
+      server.close(() => {
+        process.kill(process.pid, 'SIGUSR2');
+      });
     });
   } catch (error) {
     console.error('❌ Failed to start server:', error);

@@ -180,7 +180,7 @@ Dept Incharge: david@college.edu / Dept@123
 ```
 
 ### API Health Check
-- Visit: `http://localhost:5000/api/health`
+- Visit: `http://localhost:5173/api/health`
 - Should return server status and environment info
 
 ### Database Verification
@@ -242,7 +242,7 @@ sudo systemctl start mongod
 ```
 
 ### Port Conflicts
-- Backend runs on port 5000
+- Backend runs on port 5173
 - Frontend runs on port 8080
 - MongoDB uses port 27017
 

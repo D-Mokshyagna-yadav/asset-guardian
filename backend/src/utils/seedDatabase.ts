@@ -206,7 +206,7 @@ const seedData = async () => {
         purchaseDate: new Date('2024-01-20'),
         arrivalDate: new Date('2024-01-22'),
         vendor: 'Dell Technologies',
-        cost: 25000,
+        cost: 25173,
         quantity: 1,
         status: 'IN_STOCK',
         createdBy: admin._id,

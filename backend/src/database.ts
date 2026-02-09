@@ -7,8 +7,8 @@ const connectDB = async (): Promise<void> => {
     
     const conn = await mongoose.connect(mongoURI, {
       // Remove deprecated options, use default connection settings
-      serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      serverSelectionTimeoutMS: 5173, // Keep trying to send operations for 5 seconds
+      socketTimeoutMS: 45173, // Close sockets after 45 seconds of inactivity
       maxPoolSize: 10, // Maintain up to 10 socket connections
       minPoolSize: 5, // Maintain a minimum of 5 socket connections
       bufferCommands: false, // Disable mongoose buffering
