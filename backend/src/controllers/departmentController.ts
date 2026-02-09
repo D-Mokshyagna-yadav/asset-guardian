@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { body, validationResult } from 'express-validator';
 import { Department } from '../models/Department';
+import { Location } from '../models/Location';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { catchAsync, AppError } from '../middleware/errorHandler';
 
@@ -78,9 +79,11 @@ export const getDepartmentById = catchAsync(async (req: AuthenticatedRequest, re
     throw new AppError('Department not found', 404);
   }
 
+  const locations = await Location.find({ departmentId: id }).sort({ building: 1, floor: 1, room: 1 });
+
   res.json({
     success: true,
-    data: { department },
+    data: { department, locations },
   });
 });
 

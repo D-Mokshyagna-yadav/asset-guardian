@@ -46,12 +46,12 @@ export default function DeviceDetails() {
         if (dev.locationId) {
           try {
             const locRes = await locationsApi.getLocationById(dev.locationId as string);
-            setLocation(locRes.data.data?.location || null);
+            setLocation(locRes.data.data || null);
           } catch {}
         }
         try {
           const logsRes = await auditLogsApi.getAuditLogs({ entityId: id, entityType: 'Device', limit: 20 } as any);
-          setDeviceLogs(logsRes.data.data || []);
+          setDeviceLogs(logsRes.data.data?.auditLogs || []);
         } catch {}
       } catch {
         setDevice(null);

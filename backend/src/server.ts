@@ -32,7 +32,19 @@ app.use(helmet({
 
 // CORS
 app.use(cors({
-  origin: config.cors.origin,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+    const allowedOrigins = config.cors.origin.split(',').map((o: string) => o.trim());
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    // In development, allow any localhost/LAN origin
+    if (config.nodeEnv === 'development') {
+      return callback(null, true);
+    }
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

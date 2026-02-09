@@ -7,6 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -37,28 +38,22 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
 
-      const refreshToken = localStorage.getItem('refreshToken');
-      if (refreshToken) {
-        try {
-          const response = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-            refreshToken,
-          });
-          
-          const { accessToken } = response.data.data;
-          localStorage.setItem('accessToken', accessToken);
-          
-          originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-          return api(originalRequest);
-        } catch (refreshError) {
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          window.location.href = '/login';
-          return Promise.reject(refreshError);
-        }
-      } else {
+      try {
+        const response = await axios.post(
+          `${API_BASE_URL}/auth/refresh-token`,
+          {},
+          { withCredentials: true }
+        );
+        
+        const { accessToken } = response.data.data;
+        localStorage.setItem('accessToken', accessToken);
+        
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+        return api(originalRequest);
+      } catch (refreshError) {
         localStorage.removeItem('accessToken');
         window.location.href = '/login';
-        return Promise.reject(error);
+        return Promise.reject(refreshError);
       }
     }
 
@@ -164,9 +159,13 @@ export const locationsApi = {
     limit?: number;
     search?: string;
     building?: string;
+    departmentId?: string;
   }) => api.get<PaginatedResponse<Location>>('/locations', { params }),
   
   getLocationById: (id: string) => api.get<ApiResponse<{ location: Location }>>(`/locations/${id}`),
+  
+  getLocationsByDepartment: (departmentId: string) => 
+    api.get<ApiResponse<{ locations: Location[] }>>(`/locations/department/${departmentId}`),
   
   createLocation: (data: Omit<Location, 'id' | 'createdAt' | 'updatedAt'>) => 
     api.post<ApiResponse<{ location: Location }>>('/locations', data),
@@ -228,8 +227,15 @@ export interface RoleColorConfig {
   displayLabel: string;
 }
 
+export interface StatusStyleConfig {
+  status: string;
+  classes: string;
+  label: string;
+}
+
 export const configurationApi = {
   getRoleColors: () => api.get<ApiResponse<RoleColorConfig[]>>('/configuration/enum/role-colors'),
+  getStatusStyles: () => api.get<ApiResponse<StatusStyleConfig[]>>('/configuration/enum/status-styles'),
 };
 
 export default api;

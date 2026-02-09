@@ -6,6 +6,7 @@ export interface ILocation extends Document {
   floor: string;
   room: string;
   rack?: string;
+  departmentId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +35,11 @@ const locationSchema = new Schema<ILocation>({
     trim: true,
     maxlength: [50, 'Rack cannot exceed 50 characters'],
   },
+  departmentId: {
+    type: Schema.Types.ObjectId,
+    ref: 'Department',
+    default: null,
+  },
 }, {
   timestamps: true,
   toJSON: {
@@ -47,7 +53,6 @@ const locationSchema = new Schema<ILocation>({
 });
 
 // Indexes
-locationSchema.index({ building: 1, floor: 1, room: 1 });
 locationSchema.index({ building: 1 });
 
 // Compound unique index to prevent duplicate locations

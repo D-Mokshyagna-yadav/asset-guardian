@@ -63,11 +63,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await authApi.login(email, password);
       
       if (response.data.success && response.data.data) {
-        const { user, accessToken, refreshToken } = response.data.data;
+        const { user, accessToken } = response.data.data;
         
-        // Store tokens
+        // Store access token (refresh token is set as HTTP-only cookie by backend)
         localStorage.setItem('accessToken', accessToken);
-        localStorage.setItem('refreshToken', refreshToken);
         
         setAuthState({
           user,

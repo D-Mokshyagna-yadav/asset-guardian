@@ -38,8 +38,8 @@ export default function Inventory() {
           devicesApi.getDevices({ limit: 500 }),
           departmentsApi.getDepartments({ limit: 100 }),
         ]);
-        setDevices(devRes.data.data || []);
-        setDepartments(deptRes.data.data || []);
+        setDevices(devRes.data.data?.devices || []);
+        setDepartments(deptRes.data.data?.departments || []);
       } catch (err) {
         console.error('Failed to load inventory', err);
       } finally {

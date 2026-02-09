@@ -7,6 +7,7 @@ import {
   deleteLocation,
   getLocationsByBuilding,
   getBuildingList,
+  getLocationsByDepartment,
   locationValidation,
 } from '../controllers/locationController';
 import { authenticate, authorize } from '../middleware/auth';
@@ -23,6 +24,9 @@ router.get('/buildings/list', getBuildingList);
 
 // Get locations by building - All authenticated users
 router.get('/building/:building', getLocationsByBuilding);
+
+// Get locations by department - All authenticated users
+router.get('/department/:departmentId', getLocationsByDepartment);
 
 // Get all locations - All authenticated users
 router.get('/', getLocations);

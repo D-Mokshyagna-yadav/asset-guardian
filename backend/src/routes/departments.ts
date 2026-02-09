@@ -22,13 +22,13 @@ router.use(authenticate);
 
 // GET routes
 router.get('/', getDepartments);
-router.get('/stats', authorize('admin', 'manager'), getDepartmentStats);
+router.get('/stats', authorize('ADMIN'), getDepartmentStats);
 router.get('/:id', objectIdValidation, getDepartmentById);
 
 // POST routes (admin only)
 router.post(
   '/',
-  authorize('admin'),
+  authorize('ADMIN'),
   departmentValidation,
   createDepartment
 );
@@ -36,7 +36,7 @@ router.post(
 // PUT routes (admin only)
 router.put(
   '/:id',
-  authorize('admin'),
+  authorize('ADMIN'),
   objectIdValidation,
   departmentValidation,
   updateDepartment
@@ -45,7 +45,7 @@ router.put(
 // DELETE routes (admin only)
 router.delete(
   '/:id',
-  authorize('admin'),
+  authorize('ADMIN'),
   objectIdValidation,
   deleteDepartment
 );

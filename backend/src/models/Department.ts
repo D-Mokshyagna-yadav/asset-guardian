@@ -72,8 +72,7 @@ const departmentSchema = new Schema<IDepartment>({
   },
 });
 
-// Indexes
-departmentSchema.index({ name: 1 });
+// Indexes (name already indexed via unique: true)
 departmentSchema.index({ block: 1 });
 departmentSchema.index({ contactEmail: 1 });
 

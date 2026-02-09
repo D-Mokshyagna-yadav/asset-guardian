@@ -31,7 +31,7 @@ export default function AuditLogs() {
         if (actionFilter !== 'All') params.action = actionFilter;
         if (entityFilter !== 'All') params.entityType = entityFilter;
         const res = await auditLogsApi.getAuditLogs({ ...params, limit: 200 } as any);
-        setLogs(res.data.data || []);
+        setLogs(res.data.data?.auditLogs || []);
       } catch (err) {
         console.error('Failed to fetch audit logs', err);
       } finally {

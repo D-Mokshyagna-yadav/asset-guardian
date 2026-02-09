@@ -28,6 +28,10 @@ export const locationValidation = [
     .trim()
     .isLength({ max: 50 })
     .withMessage('Rack must not exceed 50 characters'),
+  body('departmentId')
+    .optional({ nullable: true })
+    .isMongoId()
+    .withMessage('Invalid department ID'),
 ];
 
 export const getLocations = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
@@ -35,6 +39,7 @@ export const getLocations = catchAsync(async (req: AuthenticatedRequest, res: Re
   const limit = parseInt(req.query.limit as string) || 10;
   const search = req.query.search as string;
   const building = req.query.building as string;
+  const departmentId = req.query.departmentId as string;
 
   const query: any = {};
 
@@ -50,9 +55,14 @@ export const getLocations = catchAsync(async (req: AuthenticatedRequest, res: Re
     query.building = { $regex: building, $options: 'i' };
   }
 
+  if (departmentId) {
+    query.departmentId = departmentId;
+  }
+
   const skip = (page - 1) * limit;
 
   const locations = await Location.find(query)
+    .populate('departmentId', 'name block')
     .sort({ building: 1, floor: 1, room: 1 })
     .skip(skip)
     .limit(limit);
@@ -89,7 +99,7 @@ export const getLocationById = catchAsync(async (req: AuthenticatedRequest, res:
 });
 
 export const createLocation = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  const { building, floor, room, rack } = req.body;
+  const { building, floor, room, rack, departmentId } = req.body;
 
   // Check for duplicate location
   const existing = await Location.findOne({ building, floor, room });
@@ -102,6 +112,7 @@ export const createLocation = catchAsync(async (req: AuthenticatedRequest, res: 
     floor,
     room,
     rack,
+    departmentId: departmentId || null,
     createdAt: new Date(),
     updatedAt: new Date(),
   });
@@ -117,7 +128,7 @@ export const createLocation = catchAsync(async (req: AuthenticatedRequest, res: 
 
 export const updateLocation = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
   const { id } = req.params;
-  const { building, floor, room, rack } = req.body;
+  const { building, floor, room, rack, departmentId } = req.body;
 
   const location = await Location.findById(id);
   if (!location) {
@@ -140,6 +151,7 @@ export const updateLocation = catchAsync(async (req: AuthenticatedRequest, res: 
   if (floor) location.floor = floor;
   if (room) location.room = room;
   if (rack !== undefined) location.rack = rack;
+  if (departmentId !== undefined) location.departmentId = departmentId || null;
   location.updatedAt = new Date();
 
   await location.save();
@@ -198,5 +210,20 @@ export const getBuildingList = catchAsync(async (req: AuthenticatedRequest, res:
   res.json({
     success: true,
     data: buildings,
+  });
+});
+
+export const getLocationsByDepartment = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
+  const { departmentId } = req.params;
+
+  const locations = await Location.find({ departmentId })
+    .populate('departmentId', 'name block')
+    .sort({ building: 1, floor: 1, room: 1 });
+
+  res.json({
+    success: true,
+    data: {
+      locations,
+    },
   });
 });

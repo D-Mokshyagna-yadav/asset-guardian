@@ -31,6 +31,7 @@ export interface Location {
   floor: string;
   room: string;
   rack?: string;
+  departmentId?: string | Department;
   createdAt: string;
   updatedAt: string;
 }
@@ -61,6 +62,7 @@ export interface Device {
   locationId?: string | Location;
   features?: string[];
   notes?: string;
+  createdBy?: string | { id: string; name: string; email: string };
   createdAt: string;
   updatedAt: string;
 }

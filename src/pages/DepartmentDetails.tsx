@@ -1,7 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { departmentsApi, devicesApi, assignmentsApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
-import { Department, Device, Assignment } from '@/types';
+import { Department, Device, Assignment, Location } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,7 @@ export default function DepartmentDetails() {
   const [department, setDepartment] = useState<Department | null>(null);
   const [departmentDevices, setDepartmentDevices] = useState<Device[]>([]);
   const [departmentAssignments, setDepartmentAssignments] = useState<Assignment[]>([]);
+  const [departmentLocations, setDepartmentLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,7 +38,8 @@ export default function DepartmentDetails() {
           assignmentsApi.getAssignments({ departmentId: id, limit: 100 }),
         ]);
         setDepartment(deptRes.data.data?.department || null);
-        setDepartmentDevices(devicesRes.data.data || []);
+        setDepartmentLocations(deptRes.data.data?.locations || []);
+        setDepartmentDevices(devicesRes.data.data?.devices || []);
         setDepartmentAssignments(assignRes.data.data || []);
       } catch (error) {
         console.error('Failed to load department details:', error);
@@ -306,13 +308,28 @@ export default function DepartmentDetails() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <MapPin className="h-5 w-5 text-primary" />
-                Location
+                Locations ({departmentLocations.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Block</p>
-                <p className="text-sm font-medium">{department.block}</p>
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider">Block</p>
+                  <p className="text-sm font-medium">{department.block}</p>
+                </div>
+                {departmentLocations.length > 0 ? (
+                  <div className="space-y-2 pt-2 border-t">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Assigned Locations</p>
+                    {departmentLocations.map((loc) => (
+                      <div key={loc.id || (loc as any)._id} className="p-2 rounded bg-muted/50 text-sm">
+                        <p className="font-medium">{loc.building} - {loc.floor} - {loc.room}</p>
+                        {loc.rack && <p className="text-xs text-muted-foreground">Rack: {loc.rack}</p>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground pt-2 border-t">No locations assigned</p>
+                )}
               </div>
             </CardContent>
           </Card>

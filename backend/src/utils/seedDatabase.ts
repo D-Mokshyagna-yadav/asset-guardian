@@ -126,16 +126,16 @@ const seedData = async () => {
       },
     ]);
 
-    // Create locations
+    // Create locations (associated with departments)
     console.log('Creating locations...');
     const locations = await Location.create([
-      { building: 'Block A', floor: '1st Floor', room: 'Lab 101', rack: 'R-01' },
-      { building: 'Block A', floor: '2nd Floor', room: 'Lab 201', rack: 'R-02' },
-      { building: 'Block B', floor: '1st Floor', room: 'Server Room', rack: 'SR-01' },
-      { building: 'Main Building', floor: 'Ground Floor', room: 'IT Office' },
-      { building: 'Block B', floor: '2nd Floor', room: 'Faculty Room', rack: 'FR-01' },
-      { building: 'Block C', floor: '1st Floor', room: 'Workshop Lab', rack: 'WL-01' },
-      { building: 'Block C', floor: '2nd Floor', room: 'Conference Room' },
+      { building: 'Block A', floor: '1st Floor', room: 'Lab 101', rack: 'R-01', departmentId: departments[0]._id },
+      { building: 'Block A', floor: '2nd Floor', room: 'Lab 201', rack: 'R-02', departmentId: departments[0]._id },
+      { building: 'Block B', floor: '1st Floor', room: 'Server Room', rack: 'SR-01', departmentId: departments[1]._id },
+      { building: 'Main Building', floor: 'Ground Floor', room: 'IT Office', departmentId: departments[3]._id },
+      { building: 'Block B', floor: '2nd Floor', room: 'Faculty Room', rack: 'FR-01', departmentId: departments[1]._id },
+      { building: 'Block C', floor: '1st Floor', room: 'Workshop Lab', rack: 'WL-01', departmentId: departments[2]._id },
+      { building: 'Block C', floor: '2nd Floor', room: 'Conference Room', departmentId: departments[2]._id },
       { building: 'Library Building', floor: '1st Floor', room: 'Study Hall', rack: 'LB-01' },
     ]);
 

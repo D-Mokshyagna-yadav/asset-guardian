@@ -24,7 +24,7 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
     const fetchStatusStyles = async () => {
       try {
         const response = await configurationApi.getStatusStyles();
-        const styles = response.data?.data || [];
+        const styles = Array.isArray(response.data) ? response.data : (response.data?.data || []);
         const styleMap: Record<string, string> = {};
         styles.forEach((style: StatusStyleConfig) => {
           styleMap[style.status] = style.classes;

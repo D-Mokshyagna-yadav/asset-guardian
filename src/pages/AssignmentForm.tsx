@@ -21,6 +21,7 @@ export default function AssignmentForm() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [locationsLoading, setLocationsLoading] = useState(false);
   const [existingAssignment, setExistingAssignment] = useState<Assignment | null>(null);
 
   const [formData, setFormData] = useState({
@@ -34,23 +35,22 @@ export default function AssignmentForm() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [devRes, deptRes, locRes] = await Promise.all([
+        const [devRes, deptRes] = await Promise.all([
           devicesApi.getDevices({ limit: 200 }),
           departmentsApi.getDepartments({ limit: 100 }),
-          locationsApi.getLocations({ limit: 100 }),
         ]);
-        setDevices(devRes.data.data || []);
-        setDepartments(deptRes.data.data || []);
-        setLocations(locRes.data.data || []);
+        setDevices(devRes.data.data?.devices || []);
+        setDepartments(deptRes.data.data?.departments || []);
 
         if (id) {
           const assignRes = await assignmentsApi.getAssignmentById(id);
           const assignment = assignRes.data.data?.assignment;
           if (assignment) {
             setExistingAssignment(assignment);
+            const deptId = typeof assignment.departmentId === 'object' ? assignment.departmentId.id : assignment.departmentId;
             setFormData({
               deviceId: typeof assignment.deviceId === 'object' ? assignment.deviceId.id : assignment.deviceId,
-              departmentId: typeof assignment.departmentId === 'object' ? assignment.departmentId.id : assignment.departmentId,
+              departmentId: deptId,
               locationId: assignment.locationId
                 ? (typeof assignment.locationId === 'object' ? assignment.locationId.id : assignment.locationId)
                 : '',
@@ -67,6 +67,27 @@ export default function AssignmentForm() {
     };
     loadData();
   }, [id]);
+
+  // Fetch locations filtered by selected department
+  useEffect(() => {
+    if (!formData.departmentId || formData.departmentId === 'none') {
+      setLocations([]);
+      return;
+    }
+    const fetchLocations = async () => {
+      setLocationsLoading(true);
+      try {
+        const res = await locationsApi.getLocationsByDepartment(formData.departmentId);
+        setLocations(res.data.data?.locations || res.data.data || []);
+      } catch (err) {
+        console.error('Failed to load locations for department:', err);
+        setLocations([]);
+      } finally {
+        setLocationsLoading(false);
+      }
+    };
+    fetchLocations();
+  }, [formData.departmentId]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -114,7 +135,14 @@ export default function AssignmentForm() {
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+      // Reset location when department changes
+      if (name === 'departmentId') {
+        updated.locationId = '';
+      }
+      return updated;
+    });
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
@@ -202,16 +230,24 @@ export default function AssignmentForm() {
 
               <div className="space-y-2">
                 <Label htmlFor="locationId">Select Location (Optional)</Label>
-                <Select value={formData.locationId} onValueChange={(value) => handleSelectChange('locationId', value)}>
+                <Select
+                  value={formData.locationId}
+                  onValueChange={(value) => handleSelectChange('locationId', value)}
+                  disabled={!formData.departmentId || locationsLoading}
+                >
                   <SelectTrigger>
-                    <SelectValue placeholder="Choose a location" />
+                    <SelectValue placeholder={locationsLoading ? 'Loading locations...' : !formData.departmentId ? 'Select a department first' : 'Choose a location'} />
                   </SelectTrigger>
                   <SelectContent>
-                    {locations.map(loc => (
-                      <SelectItem key={loc.id} value={loc.id}>
-                        {loc.building} - {loc.floor} - {loc.room}
-                      </SelectItem>
-                    ))}
+                    {locations.length === 0 ? (
+                      <SelectItem value="none" disabled>No locations for this department</SelectItem>
+                    ) : (
+                      locations.map(loc => (
+                        <SelectItem key={loc.id} value={loc.id}>
+                          {loc.building} - {loc.floor} - {loc.room}
+                        </SelectItem>
+                      ))
+                    )}
                   </SelectContent>
                 </Select>
               </div>

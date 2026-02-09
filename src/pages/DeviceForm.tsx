@@ -38,6 +38,7 @@ export default function DeviceForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [locationsLoading, setLocationsLoading] = useState(false);
   const [existingDevice, setExistingDevice] = useState<Device | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
 
@@ -74,12 +75,8 @@ export default function DeviceForm() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [deptRes, locRes] = await Promise.all([
-          departmentsApi.getDepartments({ limit: 100 }),
-          locationsApi.getLocations({ limit: 100 }),
-        ]);
-        setDepartments(deptRes.data.data || []);
-        setLocations(locRes.data.data || []);
+        const deptRes = await departmentsApi.getDepartments({ limit: 100 });
+        setDepartments(deptRes.data.data?.departments || []);
 
         if (id) {
           const devRes = await devicesApi.getDeviceById(id);
@@ -123,6 +120,27 @@ export default function DeviceForm() {
     };
     fetchData();
   }, [id]);
+
+  // Fetch locations filtered by selected department
+  useEffect(() => {
+    if (!formData.departmentId || formData.departmentId === 'none') {
+      setLocations([]);
+      return;
+    }
+    const fetchLocations = async () => {
+      setLocationsLoading(true);
+      try {
+        const res = await locationsApi.getLocationsByDepartment(formData.departmentId);
+        setLocations(res.data.data?.locations || res.data.data || []);
+      } catch (err) {
+        console.error('Failed to load locations for department:', err);
+        setLocations([]);
+      } finally {
+        setLocationsLoading(false);
+      }
+    };
+    fetchLocations();
+  }, [formData.departmentId]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -196,7 +214,14 @@ export default function DeviceForm() {
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [name]: value };
+      // Reset location when department changes
+      if (name === 'departmentId') {
+        updated.locationId = '';
+      }
+      return updated;
+    });
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
   };
 
@@ -482,8 +507,14 @@ export default function DeviceForm() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="locationId">Location</Label>
-                    <Select value={formData.locationId} onValueChange={(v) => handleSelectChange('locationId', v)}>
-                      <SelectTrigger><SelectValue placeholder="Select location" /></SelectTrigger>
+                    <Select
+                      value={formData.locationId}
+                      onValueChange={(v) => handleSelectChange('locationId', v)}
+                      disabled={!formData.departmentId || formData.departmentId === 'none' || locationsLoading}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={locationsLoading ? 'Loading locations...' : (!formData.departmentId || formData.departmentId === 'none') ? 'Select a department first' : 'Select location'} />
+                      </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="none">Not Assigned</SelectItem>
                         {locations.map((loc: any) => <SelectItem key={loc._id || loc.id} value={loc._id || loc.id}>{loc.building} - {loc.floor} - {loc.room}</SelectItem>)}

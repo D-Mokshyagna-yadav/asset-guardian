@@ -25,10 +25,10 @@ router.get('/:key', async (req, res) => {
     if (!configuration) {
       return res.status(404).json({ error: 'Configuration not found' });
     }
-    res.json(configuration);
+    return res.json(configuration);
   } catch (error) {
     console.error('Error fetching configuration:', error);
-    res.status(500).json({ error: 'Failed to fetch configuration' });
+    return res.status(500).json({ error: 'Failed to fetch configuration' });
   }
 });
 
@@ -39,10 +39,10 @@ router.get('/enum/status-styles', async (req, res) => {
     if (!configuration || !configuration.statusStyles) {
       return res.status(404).json({ error: 'Status styles configuration not found' });
     }
-    res.json(configuration.statusStyles);
+    return res.json(configuration.statusStyles);
   } catch (error) {
     console.error('Error fetching status styles:', error);
-    res.status(500).json({ error: 'Failed to fetch status styles' });
+    return res.status(500).json({ error: 'Failed to fetch status styles' });
   }
 });
 
@@ -57,10 +57,10 @@ router.put('/:key', authorize('ADMIN'), async (req, res) => {
     if (!configuration) {
       return res.status(404).json({ error: 'Configuration not found' });
     }
-    res.json(configuration);
+    return res.json(configuration);
   } catch (error) {
     console.error('Error updating configuration:', error);
-    res.status(500).json({ error: 'Failed to update configuration' });
+    return res.status(500).json({ error: 'Failed to update configuration' });
   }
 });
 

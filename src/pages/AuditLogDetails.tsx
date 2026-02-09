@@ -69,7 +69,7 @@ export default function AuditLogDetails() {
     const fetchLog = async () => {
       try {
         const res = await auditLogsApi.getAuditLogById(id);
-        setLog(res.data.data?.log || null);
+        setLog(res.data.data || null);
       } catch {
         setLog(null);
       } finally {

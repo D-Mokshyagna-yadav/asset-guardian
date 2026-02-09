@@ -31,9 +31,9 @@ export default function Dashboard() {
           auditLogsApi.getAuditLogs({ limit: 5 }),
           assignmentsApi.getAssignments({ limit: 100 }),
         ]);
-        setDevices(devRes.data.data || []);
-        setAuditLogs(logRes.data.data || []);
-        setAssignments(assignRes.data.data || []);
+        setDevices(devRes.data.data?.devices || []);
+        setAuditLogs(logRes.data.data?.auditLogs || []);
+        setAssignments(Array.isArray(assignRes.data.data) ? assignRes.data.data : []);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
       } finally {

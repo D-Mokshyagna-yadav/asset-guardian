@@ -33,7 +33,7 @@ export default function DevicePreview() {
         if (dev.locationId) {
           try {
             const locRes = await locationsApi.getLocationById(dev.locationId as string);
-            setLocation(locRes.data.data?.location || null);
+            setLocation(locRes.data.data || null);
           } catch {}
         }
       } catch {
@@ -466,7 +466,9 @@ export default function DevicePreview() {
               {device.createdBy && (
                 <div>
                   <p className="text-muted-foreground uppercase tracking-wider mb-1">Created By</p>
-                  <p className="text-foreground font-medium">{device.createdBy}</p>
+                  <p className="text-foreground font-medium">
+                    {typeof device.createdBy === 'object' ? (device.createdBy as any).name || (device.createdBy as any).email : device.createdBy}
+                  </p>
                 </div>
               )}
             </CardContent>
