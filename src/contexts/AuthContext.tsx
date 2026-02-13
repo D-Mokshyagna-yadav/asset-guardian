@@ -5,6 +5,7 @@ import { authApi } from '@/lib/api';
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -103,8 +104,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const refreshUser = useCallback(async () => {
+    try {
+      const response = await authApi.getProfile();
+      if (response.data.success && response.data.data?.user) {
+        setAuthState(prev => ({
+          ...prev,
+          user: response.data.data!.user,
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to refresh user:', error);
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ ...authState, login, logout }}>
+    <AuthContext.Provider value={{ ...authState, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

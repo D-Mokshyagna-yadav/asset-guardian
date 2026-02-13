@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ export default function Login() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const { login, isLoading } = useAuth();
   const navigate = useNavigate();
+  const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,6 +33,9 @@ export default function Login() {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         if (el instanceof HTMLInputElement) el.focus();
       }
+      // Shake the form
+      formRef.current?.classList.add('animate-shake');
+      setTimeout(() => formRef.current?.classList.remove('animate-shake'), 500);
       return;
     }
 
@@ -40,6 +44,8 @@ export default function Login() {
       navigate('/dashboard');
     } else {
       setError('Invalid email or password');
+      formRef.current?.classList.add('animate-shake');
+      setTimeout(() => formRef.current?.classList.remove('animate-shake'), 500);
     }
   };
 
@@ -50,25 +56,25 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background px-4">
-      <div className="w-full max-w-md animate-fade-in">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/50 px-4">
+      <div className="w-full max-w-md animate-slide-up">
         <div className="flex flex-col items-center mb-8">
-          <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-primary mb-4">
-            <Server className="h-8 w-8 text-primary-foreground" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/25 mb-4 animate-scale-in">
+            <Server className="h-9 w-9 text-primary-foreground" />
           </div>
           <h1 className="text-2xl font-bold text-foreground">Asset Guardian</h1>
-          <p className="text-muted-foreground mt-1">Device Inventory System</p>
+          <p className="text-muted-foreground mt-1">IT Device Inventory System</p>
         </div>
 
-        <Card className="border-border shadow-lg">
+        <Card className="border-border shadow-xl shadow-black/5">
           <CardHeader className="space-y-1 pb-4">
             <CardTitle className="text-xl text-center">Admin Sign In</CardTitle>
             <CardDescription className="text-center">Enter your credentials to access the system</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
               {error && (
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive text-sm animate-slide-down">
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   <span>{error}</span>
                 </div>
@@ -83,9 +89,9 @@ export default function Login() {
                   value={email}
                   onChange={(e) => { setEmail(e.target.value); clearFieldError('email'); }}
                   autoComplete="email"
-                  className={`h-11 ${fieldErrors.email ? 'border-red-500' : ''}`}
+                  className={`h-11 transition-colors ${fieldErrors.email ? 'border-red-500 focus:ring-red-500' : ''}`}
                 />
-                {fieldErrors.email && <p className="text-sm text-red-500">{fieldErrors.email}</p>}
+                {fieldErrors.email && <p className="text-sm text-red-500 animate-slide-down">{fieldErrors.email}</p>}
               </div>
 
               <div className="space-y-2">
@@ -97,17 +103,26 @@ export default function Login() {
                   value={password}
                   onChange={(e) => { setPassword(e.target.value); clearFieldError('password'); }}
                   autoComplete="current-password"
-                  className={`h-11 ${fieldErrors.password ? 'border-red-500' : ''}`}
+                  className={`h-11 transition-colors ${fieldErrors.password ? 'border-red-500 focus:ring-red-500' : ''}`}
                 />
-                {fieldErrors.password && <p className="text-sm text-red-500">{fieldErrors.password}</p>}
+                {fieldErrors.password && <p className="text-sm text-red-500 animate-slide-down">{fieldErrors.password}</p>}
               </div>
 
-              <Button type="submit" disabled={isLoading} className="w-full">
-                {isLoading ? 'Signing in...' : 'Sign in'}
+              <Button type="submit" disabled={isLoading} className="w-full h-11 btn-press font-medium">
+                {isLoading ? (
+                  <span className="flex items-center gap-2">
+                    <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Signing in...
+                  </span>
+                ) : 'Sign in'}
               </Button>
             </form>
           </CardContent>
         </Card>
+
+        <p className="text-center text-xs text-muted-foreground mt-6">
+          ITSS Manager &middot; Secure Access Only
+        </p>
       </div>
     </div>
   );

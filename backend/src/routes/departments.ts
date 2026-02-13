@@ -33,8 +33,15 @@ router.post(
   createDepartment
 );
 
-// PUT routes (admin only)
+// PUT/PATCH routes (admin only) — accept both methods for compatibility
 router.put(
+  '/:id',
+  authorize('ADMIN'),
+  objectIdValidation,
+  departmentValidation,
+  updateDepartment
+);
+router.patch(
   '/:id',
   authorize('ADMIN'),
   objectIdValidation,

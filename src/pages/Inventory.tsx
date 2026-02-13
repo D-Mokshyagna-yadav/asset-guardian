@@ -19,8 +19,10 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { Search, Plus, Filter, Eye, Edit, Trash2, BarChart3, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Search, Plus, Filter, Eye, Edit, Trash2, BarChart3 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { toast } from 'sonner';
 
 export default function Inventory() {
   const navigate = useNavigate();
@@ -31,7 +33,8 @@ export default function Inventory() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
-  const [alertMessage, setAlertMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [selectedDevices, setSelectedDevices] = useState<Set<string>>(new Set());
+  const confirm = useConfirm();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -101,48 +104,111 @@ export default function Inventory() {
 
   const getDepartmentId = (dept: any) => dept._id || dept.id;
 
+  const toggleSelect = (deviceId: string) => {
+    setSelectedDevices(prev => {
+      const next = new Set(prev);
+      if (next.has(deviceId)) next.delete(deviceId);
+      else next.add(deviceId);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedDevices.size === filteredDevices.length) {
+      setSelectedDevices(new Set());
+    } else {
+      setSelectedDevices(new Set(filteredDevices.map((d: any) => d._id || d.id)));
+    }
+  };
+
   const handleDelete = async (deviceId: string) => {
-    if (!confirm('Are you sure you want to delete this device?')) return;
+    const ok = await confirm({ title: 'Delete Device', description: 'This will permanently remove this device and all its data. Any linked assignments may also be affected. This action cannot be undone.', confirmText: 'Yes, Delete', variant: 'destructive' });
+    if (!ok) return;
     try {
       await devicesApi.deleteDevice(deviceId);
       setDevices(prev => prev.filter((d: any) => (d._id || d.id) !== deviceId));
-      setAlertMessage({ type: 'success', text: 'Device deleted successfully.' });
-      setTimeout(() => setAlertMessage(null), 4000);
+      setSelectedDevices(prev => { const next = new Set(prev); next.delete(deviceId); return next; });
+      toast.success('Device deleted successfully.');
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Failed to delete device. It may have active assignments.';
-      setAlertMessage({ type: 'error', text: msg });
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(() => setAlertMessage(null), 6000);
+      toast.error(err?.response?.data?.message || 'Failed to delete device. It may have active assignments.');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDevices.size === 0) return;
+    const ok = await confirm({ title: 'Bulk Delete Devices', description: `You are about to permanently delete ${selectedDevices.size} device(s). All associated data will be lost. This action cannot be undone.`, confirmText: 'Yes, Delete All', variant: 'destructive' });
+    if (!ok) return;
+    let successCount = 0;
+    let failCount = 0;
+    for (const deviceId of selectedDevices) {
+      try {
+        await devicesApi.deleteDevice(deviceId);
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+    try {
+      const res = await devicesApi.getDevices({ limit: 500 });
+      setDevices(res.data.data?.devices || []);
+    } catch {}
+    setSelectedDevices(new Set());
+    if (failCount === 0) {
+      toast.success(`${successCount} device(s) deleted successfully.`);
+    } else {
+      toast.error(`${successCount} deleted, ${failCount} failed (may have active assignments).`);
+    }
+  };
+
+  const handleStatusChange = async (deviceId: string, newStatus: DeviceStatus) => {
+    if (newStatus === 'SCRAPPED') {
+      const ok = await confirm({ title: 'Scrap Device', description: 'This will mark the device as permanently decommissioned. It will be moved to the Scrapped section and can be restored later if needed.', confirmText: 'Yes, Scrap It', variant: 'warning' });
+      if (!ok) return;
+    }
+    try {
+      await devicesApi.updateDevice(deviceId, { status: newStatus });
+      setDevices(prev => prev.map(d => (d.id === deviceId ? { ...d, status: newStatus } : d)));
+      toast.success(`Device status changed to ${newStatus.replace(/_/g, ' ')}.`);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to update device status.');
     }
   };
 
   if (loading) {
-    return <div className="p-6 lg:p-8 text-center text-muted-foreground">Loading inventory...</div>;
+    return (
+      <div className="p-6 lg:p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="space-y-2">
+            <div className="shimmer h-7 w-32" />
+            <div className="shimmer h-4 w-56" />
+          </div>
+          <div className="shimmer h-10 w-28 rounded-md" />
+        </div>
+        <div className="shimmer h-14 w-full rounded-lg mb-6" />
+        <div className="space-y-1">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="shimmer h-14 w-full" style={{ animationDelay: `${i * 0.08}s` }} />
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="p-6 lg:p-8 animate-fade-in">
+    <div className="p-6 lg:p-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 animate-slide-up">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Inventory</h1>
           <p className="text-muted-foreground mt-1">Manage all IT devices and equipment</p>
         </div>
         <Link to="/inventory/new">
-          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground btn-press">
             <Plus className="h-4 w-4 mr-2" />
             Add Device
           </Button>
         </Link>
       </div>
-
-      {/* Alert Messages */}
-      {alertMessage && (
-        <Alert variant={alertMessage.type === 'error' ? 'destructive' : 'default'} className={`mb-6 ${alertMessage.type === 'success' ? 'border-green-200 bg-green-50 text-green-800' : ''}`}>
-          {alertMessage.type === 'error' ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />}
-          <AlertDescription>{alertMessage.text}</AlertDescription>
-        </Alert>
-      )}
 
       {/* Filters */}
       <Card className="mb-6">
@@ -211,26 +277,57 @@ export default function Inventory() {
 
         {/* List View */}
         <TabsContent value="list">
+          {selectedDevices.size > 0 && (
+            <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20 animate-slide-down">
+              <Checkbox
+                checked={selectedDevices.size === filteredDevices.length && filteredDevices.length > 0}
+                onCheckedChange={toggleSelectAll}
+              />
+              <span className="text-sm font-medium">{selectedDevices.size} selected</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive border-destructive/30 hover:bg-destructive/10 btn-press ml-auto"
+                onClick={handleBulkDelete}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Delete Selected
+              </Button>
+            </div>
+          )}
           <Card>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead className="bg-muted/50 border-b border-border">
                     <tr>
+                      <th className="text-left text-xs font-medium text-muted-foreground px-3 py-4 w-10">
+                        <Checkbox
+                          checked={selectedDevices.size === filteredDevices.length && filteredDevices.length > 0}
+                          onCheckedChange={toggleSelectAll}
+                        />
+                      </th>
                       <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Asset Tag</th>
                       <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Device</th>
                       <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Category</th>
                       <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Qty</th>
                       <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Department</th>
                       <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Status</th>
+                      <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Change Status</th>
                       <th className="text-left text-xs font-medium text-muted-foreground px-6 py-4">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border">
+                  <tbody className="divide-y divide-border stagger-rows">
                     {filteredDevices.map((device: any) => {
                       const devId = device._id || device.id;
                       return (
-                        <tr key={devId} className="table-row-hover">
+                        <tr key={devId} className={`table-row-hover ${selectedDevices.has(devId) ? 'bg-primary/5' : ''}`}>
+                          <td className="px-3 py-4">
+                            <Checkbox
+                              checked={selectedDevices.has(devId)}
+                              onCheckedChange={() => toggleSelect(devId)}
+                            />
+                          </td>
                           <td className="px-6 py-4 text-sm font-mono text-foreground">{device.assetTag}</td>
                           <td className="px-6 py-4">
                             <div>
@@ -245,24 +342,40 @@ export default function Inventory() {
                             <StatusBadge status={device.status} />
                           </td>
                           <td className="px-6 py-4">
+                            <Select
+                              value={device.status}
+                              onValueChange={(val) => handleStatusChange(devId, val)}
+                            >
+                              <SelectTrigger className="w-[130px] h-8 text-xs">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="IN_STOCK">In Stock</SelectItem>
+                                <SelectItem value="ASSIGNED">Assigned</SelectItem>
+                                <SelectItem value="MAINTENANCE">Maintenance</SelectItem>
+                                <SelectItem value="SCRAPPED">Scrapped</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </td>
+                          <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-8 w-8 hover:scale-110 transition-transform"
                                 onClick={() => navigate(`/inventory/${devId}/preview`)}
                               >
                                 <Eye className="h-4 w-4" />
                               </Button>
                               <Link to={`/inventory/${devId}/edit`}>
-                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:scale-110 transition-transform">
                                   <Edit className="h-4 w-4" />
                                 </Button>
                               </Link>
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                className="h-8 w-8 text-destructive hover:text-destructive hover:scale-110 transition-transform"
                                 onClick={() => handleDelete(devId)}
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -277,7 +390,8 @@ export default function Inventory() {
               </div>
 
               {filteredDevices.length === 0 && (
-                <div className="text-center py-12">
+                <div className="text-center py-12 animate-empty">
+                  <Search className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4 animate-float" />
                   <p className="text-muted-foreground">No devices found matching your criteria</p>
                 </div>
               )}

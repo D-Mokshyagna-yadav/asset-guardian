@@ -18,6 +18,34 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get status styles — must be defined BEFORE /:key to avoid being caught by the param route
+router.get('/enum/status-styles', async (req, res) => {
+  try {
+    const configuration = await Configuration.findOne({ key: 'STATUS_STYLES' });
+    if (!configuration || !configuration.statusStyles) {
+      return res.status(404).json({ error: 'Status styles configuration not found' });
+    }
+    return res.json({ success: true, data: configuration.statusStyles });
+  } catch (error) {
+    console.error('Error fetching status styles:', error);
+    return res.status(500).json({ error: 'Failed to fetch status styles' });
+  }
+});
+
+// Get role colors — must be defined BEFORE /:key to avoid being caught by the param route
+router.get('/enum/role-colors', async (req, res) => {
+  try {
+    const configuration = await Configuration.findOne({ key: 'ROLE_COLORS' });
+    if (!configuration || !configuration.roleColors) {
+      return res.status(404).json({ error: 'Role colors configuration not found' });
+    }
+    return res.json({ success: true, data: configuration.roleColors });
+  } catch (error) {
+    console.error('Error fetching role colors:', error);
+    return res.status(500).json({ error: 'Failed to fetch role colors' });
+  }
+});
+
 // Get configuration by key
 router.get('/:key', async (req, res) => {
   try {
@@ -29,20 +57,6 @@ router.get('/:key', async (req, res) => {
   } catch (error) {
     console.error('Error fetching configuration:', error);
     return res.status(500).json({ error: 'Failed to fetch configuration' });
-  }
-});
-
-// Get status styles
-router.get('/enum/status-styles', async (req, res) => {
-  try {
-    const configuration = await Configuration.findOne({ key: 'STATUS_STYLES' });
-    if (!configuration || !configuration.statusStyles) {
-      return res.status(404).json({ error: 'Status styles configuration not found' });
-    }
-    return res.json(configuration.statusStyles);
-  } catch (error) {
-    console.error('Error fetching status styles:', error);
-    return res.status(500).json({ error: 'Failed to fetch status styles' });
   }
 });
 

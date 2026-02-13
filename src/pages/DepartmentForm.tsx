@@ -8,6 +8,7 @@ import { AlertCircle, ArrowLeft, MapPin, Plus, X } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { departmentsApi, locationsApi } from '@/lib/api';
 import { Location } from '@/types';
+import { toast } from 'sonner';
 
 interface NewLocation {
   building: string;
@@ -151,8 +152,9 @@ export default function DepartmentForm() {
 
       navigate('/departments');
     } catch (error: any) {
-      setErrors({ submit: error.response?.data?.message || 'Failed to save department. Please try again.' });
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const msg = error.response?.data?.message || 'Failed to save department. Please try again.';
+      setErrors({ submit: msg });
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
@@ -168,15 +170,29 @@ export default function DepartmentForm() {
 
   if (fetchingData) {
     return (
-      <div className="p-6 lg:p-8 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="p-6 lg:p-8">
+        <div className="max-w-2xl mx-auto">
+          <div className="shimmer h-9 w-40 rounded-md mb-6" />
+          <div className="bg-card border rounded-lg p-6 space-y-6">
+            <div className="space-y-2">
+              <div className="shimmer h-6 w-44" />
+              <div className="shimmer h-4 w-56" />
+            </div>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="shimmer h-4 w-28" />
+                <div className="shimmer h-10 w-full rounded-md" />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="p-6 lg:p-8">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto animate-slide-up">
         <Button variant="ghost" onClick={() => navigate('/departments')} className="mb-6">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Departments
@@ -191,7 +207,7 @@ export default function DepartmentForm() {
           </CardHeader>
           <CardContent>
             {errors.submit && (
-              <Alert variant="destructive" className="mb-6">
+              <Alert variant="destructive" className="mb-6 animate-slide-down">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{errors.submit}</AlertDescription>
               </Alert>
@@ -367,10 +383,10 @@ export default function DepartmentForm() {
               </div>
 
               <div className="flex gap-4">
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading} className="btn-press">
                   {isLoading ? 'Saving...' : id ? 'Update Department' : 'Create Department'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => navigate('/departments')} disabled={isLoading}>
+                <Button type="button" variant="outline" onClick={() => navigate('/departments')} disabled={isLoading} className="btn-press">
                   Cancel
                 </Button>
               </div>

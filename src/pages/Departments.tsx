@@ -4,19 +4,21 @@ import { useState, useEffect } from 'react';
 import { Department } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building2, Plus, Users, Mail, Phone, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Building2, Plus, Users, Mail, Phone, Trash2 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { toast } from 'sonner';
 
 export default function Departments() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
-  const [alertMessage, setAlertMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+  const [selectedDepts, setSelectedDepts] = useState<Set<string>>(new Set());
+  const confirm = useConfirm();
 
   const fetchDepartments = async () => {
     try {
       const res = await departmentsApi.getDepartments({ limit: 100 });
-      const data = res.data?.data;
-      setDepartments(Array.isArray(data) ? data : (data as any)?.departments || []);
+      setDepartments(res.data.data?.departments || []);
     } catch (error) {
       console.error('Failed to fetch departments:', error);
     } finally {
@@ -27,63 +29,134 @@ export default function Departments() {
   useEffect(() => { fetchDepartments(); }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this department?')) return;
+    const ok = await confirm({ title: 'Delete Department', description: 'This will permanently remove the department and its configuration. Devices and locations assigned to this department may also be affected. This action cannot be undone.', confirmText: 'Yes, Delete', variant: 'destructive' });
+    if (!ok) return;
     try {
       await departmentsApi.deleteDepartment(id);
       setDepartments(prev => prev.filter(d => d.id !== id));
-      setAlertMessage({ type: 'success', text: 'Department deleted successfully.' });
-      setTimeout(() => setAlertMessage(null), 4000);
+      setSelectedDepts(prev => { const next = new Set(prev); next.delete(id); return next; });
+      toast.success('Department deleted successfully.');
     } catch (error: any) {
-      const msg = error?.response?.data?.message || 'Failed to delete department. It may have devices or locations assigned.';
-      setAlertMessage({ type: 'error', text: msg });
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      setTimeout(() => setAlertMessage(null), 6000);
+      toast.error(error?.response?.data?.message || 'Failed to delete department. It may have devices or locations assigned.');
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedDepts(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedDepts.size === departments.length) {
+      setSelectedDepts(new Set());
+    } else {
+      setSelectedDepts(new Set(departments.map(d => d.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedDepts.size === 0) return;
+    const ok = await confirm({ title: 'Bulk Delete Departments', description: `You are about to permanently delete ${selectedDepts.size} department(s). All their associated data may also be affected. This action cannot be undone.`, confirmText: 'Yes, Delete All', variant: 'destructive' });
+    if (!ok) return;
+    let successCount = 0;
+    let failCount = 0;
+    for (const id of selectedDepts) {
+      try {
+        await departmentsApi.deleteDepartment(id);
+        successCount++;
+      } catch {
+        failCount++;
+      }
+    }
+    await fetchDepartments();
+    setSelectedDepts(new Set());
+    if (failCount === 0) {
+      toast.success(`${successCount} department(s) deleted successfully.`);
+    } else {
+      toast.error(`${successCount} deleted, ${failCount} failed (may have devices or locations).`);
     }
   };
 
   if (loading) {
     return (
-      <div className="p-6 lg:p-8 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="p-6 lg:p-8">
+        <div className="flex items-center justify-between mb-6">
+          <div className="space-y-2">
+            <div className="shimmer h-7 w-36" />
+            <div className="shimmer h-4 w-60" />
+          </div>
+          <div className="shimmer h-10 w-36 rounded-md" />
+        </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="shimmer h-56 rounded-lg" />
+          ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 lg:p-8 animate-fade-in">
+    <div className="p-6 lg:p-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Departments</h1>
           <p className="text-muted-foreground mt-1">Manage departments and HOD details</p>
         </div>
         <Link to="/departments/new">
-          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+          <Button className="bg-accent hover:bg-accent/90 text-accent-foreground btn-press">
             <Plus className="h-4 w-4 mr-2" />
             Add Department
           </Button>
         </Link>
       </div>
 
-      {/* Alert Messages */}
-      {alertMessage && (
-        <Alert variant={alertMessage.type === 'error' ? 'destructive' : 'default'} className={`mb-6 ${alertMessage.type === 'success' ? 'border-green-200 bg-green-50 text-green-800' : ''}`}>
-          {alertMessage.type === 'error' ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4 text-green-600" />}
-          <AlertDescription>{alertMessage.text}</AlertDescription>
-        </Alert>
-      )}
-
       {departments.length === 0 ? (
-        <div className="text-center py-12">
-          <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">No departments yet. Create one to get started.</p>
+        <div className="text-center py-16">
+          <Building2 className="h-14 w-14 text-muted-foreground/30 mx-auto mb-4" />
+          <p className="text-lg font-medium text-muted-foreground mb-1">No departments yet</p>
+          <p className="text-sm text-muted-foreground/80 mb-6">Create your first department to get started</p>
+          <Link to="/departments/new">
+            <Button className="bg-accent hover:bg-accent/90 text-accent-foreground">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Department
+            </Button>
+          </Link>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <>
+          {selectedDepts.size > 0 && (
+            <div className="flex items-center gap-3 mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20 animate-slide-down">
+              <Checkbox
+                checked={selectedDepts.size === departments.length && departments.length > 0}
+                onCheckedChange={toggleSelectAll}
+              />
+              <span className="text-sm font-medium">{selectedDepts.size} selected</span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-destructive border-destructive/30 hover:bg-destructive/10 btn-press ml-auto"
+                onClick={handleBulkDelete}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Delete Selected
+              </Button>
+            </div>
+          )}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children">
           {departments.map((dept) => (
-            <Card key={dept.id} className="hover:shadow-md transition-shadow">
+            <Card key={dept.id} className={`hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 ${selectedDepts.has(dept.id) ? 'ring-2 ring-primary/40 bg-primary/5' : ''}`}>
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
+                    <Checkbox
+                      checked={selectedDepts.has(dept.id)}
+                      onCheckedChange={() => toggleSelect(dept.id)}
+                    />
                     <div className="p-2 rounded-lg bg-primary/10">
                       <Building2 className="h-5 w-5 text-primary" />
                     </div>
@@ -127,7 +200,8 @@ export default function Departments() {
               </CardContent>
             </Card>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

@@ -10,6 +10,7 @@ import { AlertCircle, ArrowLeft } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { departmentsApi, locationsApi, devicesApi, assignmentsApi } from '@/lib/api';
 import { Department, Location, Device, Assignment } from '@/types';
+import { toast } from 'sonner';
 
 export default function AssignmentForm() {
   const navigate = useNavigate();
@@ -23,6 +24,7 @@ export default function AssignmentForm() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [existingAssignment, setExistingAssignment] = useState<Assignment | null>(null);
+  const [deviceAvailability, setDeviceAvailability] = useState<Record<string, number>>({});
 
   const [formData, setFormData] = useState({
     deviceId: '',
@@ -35,21 +37,41 @@ export default function AssignmentForm() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [devRes, deptRes] = await Promise.all([
+        const [devRes, deptRes, assignRes] = await Promise.all([
           devicesApi.getDevices({ limit: 200 }),
           departmentsApi.getDepartments({ limit: 100 }),
+          assignmentsApi.getAssignments({ limit: 500 }),
         ]);
-        setDevices(devRes.data.data?.devices || []);
+        const allDevices = devRes.data.data?.devices || [];
+        setDevices(allDevices);
         setDepartments(deptRes.data.data?.departments || []);
 
+        // Compute available quantity per device
+        const allAssignments: Assignment[] = Array.isArray(assignRes.data.data) ? assignRes.data.data : [];
+        const availMap: Record<string, number> = {};
+        for (const dev of allDevices) {
+          const assignedQty = allAssignments
+            .filter(a => {
+              const aDevId = typeof a.deviceId === 'object' ? a.deviceId.id : a.deviceId;
+              return aDevId === dev.id && (a.status === 'ACTIVE' || a.status === 'MAINTENANCE');
+            })
+            .reduce((sum, a) => sum + a.quantity, 0);
+          availMap[dev.id] = dev.quantity - assignedQty;
+        }
+        setDeviceAvailability(availMap);
+
         if (id) {
-          const assignRes = await assignmentsApi.getAssignmentById(id);
-          const assignment = assignRes.data.data?.assignment;
+          const assignDetailRes = await assignmentsApi.getAssignmentById(id);
+          const assignment = assignDetailRes.data.data?.assignment;
           if (assignment) {
             setExistingAssignment(assignment);
+            const devId = typeof assignment.deviceId === 'object' ? assignment.deviceId.id : assignment.deviceId;
             const deptId = typeof assignment.departmentId === 'object' ? assignment.departmentId.id : assignment.departmentId;
+            // When editing, add back current assignment qty to available
+            availMap[devId] = (availMap[devId] || 0) + (assignment.quantity || 0);
+            setDeviceAvailability({ ...availMap });
             setFormData({
-              deviceId: typeof assignment.deviceId === 'object' ? assignment.deviceId.id : assignment.deviceId,
+              deviceId: devId,
               departmentId: deptId,
               locationId: assignment.locationId
                 ? (typeof assignment.locationId === 'object' ? assignment.locationId.id : assignment.locationId)
@@ -78,7 +100,8 @@ export default function AssignmentForm() {
       setLocationsLoading(true);
       try {
         const res = await locationsApi.getLocationsByDepartment(formData.departmentId);
-        setLocations(res.data.data?.locations || res.data.data || []);
+        const locs = res.data.data?.locations;
+        setLocations(Array.isArray(locs) ? locs : []);
       } catch (err) {
         console.error('Failed to load locations for department:', err);
         setLocations([]);
@@ -108,8 +131,14 @@ export default function AssignmentForm() {
     const newErrors: Record<string, string> = {};
     if (!formData.deviceId) newErrors.deviceId = 'Device is required';
     if (!formData.departmentId) newErrors.departmentId = 'Department is required';
-    if (!formData.quantity || parseInt(formData.quantity) < 1) {
+    const qty = parseInt(formData.quantity);
+    if (!formData.quantity || qty < 1) {
       newErrors.quantity = 'Quantity must be at least 1';
+    } else if (formData.deviceId) {
+      const avail = deviceAvailability[formData.deviceId] ?? 0;
+      if (qty > avail) {
+        newErrors.quantity = `Only ${avail} available for this device`;
+      }
     }
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
@@ -141,7 +170,7 @@ export default function AssignmentForm() {
     } catch (error: any) {
       const msg = error?.response?.data?.message || 'Failed to save assignment';
       setErrors({ submit: msg });
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      toast.error(msg);
     } finally {
       setIsLoading(false);
     }
@@ -168,8 +197,20 @@ export default function AssignmentForm() {
   if (dataLoading) {
     return (
       <div className="min-h-screen bg-gray-50 p-4">
-        <div className="max-w-2xl mx-auto text-center py-12">
-          <p className="text-muted-foreground">Loading...</p>
+        <div className="max-w-2xl mx-auto">
+          <div className="shimmer h-9 w-40 rounded-md mb-6" />
+          <div className="bg-card border rounded-lg p-6 space-y-6">
+            <div className="space-y-2">
+              <div className="shimmer h-5 w-24" />
+              <div className="shimmer h-4 w-56" />
+            </div>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-2">
+                <div className="shimmer h-4 w-28" />
+                <div className="shimmer h-10 w-full rounded-md" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -177,7 +218,7 @@ export default function AssignmentForm() {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-2xl mx-auto">
+      <div className="max-w-2xl mx-auto animate-slide-up">
         <Button variant="ghost" onClick={() => navigate('/assignments')} className="mb-6">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Assignments
@@ -192,7 +233,7 @@ export default function AssignmentForm() {
           </CardHeader>
           <CardContent>
             {errors.submit && (
-              <Alert variant="destructive" className="mb-6">
+              <Alert variant="destructive" className="mb-6 animate-slide-down">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{errors.submit}</AlertDescription>
               </Alert>
@@ -206,13 +247,37 @@ export default function AssignmentForm() {
                     <SelectValue placeholder="Choose a device" />
                   </SelectTrigger>
                   <SelectContent>
-                    {devices.map(device => (
-                      <SelectItem key={device.id} value={device.id}>
-                        {device.deviceName} ({device.assetTag}) — Qty: {device.quantity}
-                      </SelectItem>
-                    ))}
+                    {devices
+                      .filter(d => d.status !== 'SCRAPPED')
+                      .map(device => {
+                      const avail = deviceAvailability[device.id] ?? 0;
+                      const isOutOfStock = avail <= 0 && formData.deviceId !== device.id;
+                      return (
+                        <SelectItem key={device.id} value={device.id} disabled={isOutOfStock}>
+                          <span className="flex items-center gap-2">
+                            {device.deviceName} ({device.assetTag})
+                            {isOutOfStock ? (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-red-100 text-red-600 font-medium">Out of Stock</span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">— {avail} of {device.quantity} available</span>
+                            )}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
+                {formData.deviceId && (
+                  <p className="text-xs text-muted-foreground">
+                    {(deviceAvailability[formData.deviceId] ?? 0) <= 0 ? (
+                      <span className="font-semibold text-red-500">Out of Stock — All units are currently assigned</span>
+                    ) : (
+                      <>Available: <span className="font-semibold text-emerald-600">
+                        {deviceAvailability[formData.deviceId] ?? 0}
+                      </span> of {devices.find(d => d.id === formData.deviceId)?.quantity ?? 0}</>
+                    )}
+                  </p>
+                )}
                 {errors.deviceId && <p className="text-sm text-red-500">{errors.deviceId}</p>}
               </div>
 
@@ -223,6 +288,7 @@ export default function AssignmentForm() {
                   name="quantity"
                   type="number"
                   min="1"
+                  max={formData.deviceId ? Math.max(deviceAvailability[formData.deviceId] ?? 1, 1) : undefined}
                   value={formData.quantity}
                   onChange={handleChange}
                   className={errors.quantity ? 'border-red-500' : ''}
@@ -284,10 +350,10 @@ export default function AssignmentForm() {
               </div>
 
               <div className="flex gap-4">
-                <Button type="submit" disabled={isLoading}>
+                <Button type="submit" disabled={isLoading} className="btn-press">
                   {isLoading ? 'Saving...' : id ? 'Update Assignment' : 'Create Assignment'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => navigate('/assignments')} disabled={isLoading}>
+                <Button type="button" variant="outline" onClick={() => navigate('/assignments')} disabled={isLoading} className="btn-press">
                   Cancel
                 </Button>
               </div>

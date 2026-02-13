@@ -122,7 +122,7 @@ export default function AuditLogs() {
         const params: Record<string, string> = {};
         if (actionFilter !== 'All') params.action = actionFilter;
         if (entityFilter !== 'All') params.entityType = entityFilter;
-        const res = await auditLogsApi.getAuditLogs({ ...params, limit: 200 } as any);
+        const res = await auditLogsApi.getAuditLogs({ ...params, limit: 200 });
         setLogs(res.data.data?.auditLogs || []);
       } catch (err) {
         console.error('Failed to fetch audit logs', err);
@@ -157,14 +157,14 @@ export default function AuditLogs() {
   };
 
   return (
-    <div className="p-6 lg:p-8 animate-fade-in">
+    <div className="p-6 lg:p-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 animate-slide-up">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Audit Logs</h1>
           <p className="text-muted-foreground mt-1">Complete history of all system changes</p>
         </div>
-        <Button variant="outline">
+        <Button variant="outline" className="btn-press">
           <Download className="h-4 w-4 mr-2" />
           Export Logs
         </Button>
@@ -216,11 +216,15 @@ export default function AuditLogs() {
 
       {/* Logs List */}
       {loading ? (
-        <div className="text-center py-12 text-muted-foreground">Loading audit logs...</div>
+        <div className="space-y-1">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="shimmer h-20 w-full rounded-lg" style={{ animationDelay: `${i * 80}ms` }} />
+          ))}
+        </div>
       ) : (
       <Card>
         <CardContent className="p-0">
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-border stagger-rows">
             {filteredLogs.map((log) => (
               <div key={log.id} className="p-6 table-row-hover">
                 <div className="flex items-start justify-between gap-4">
@@ -268,7 +272,7 @@ export default function AuditLogs() {
                     </div>
                     <Link to={`/audit-logs/${log.id}`}>
                       <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-4 w-4 hover:scale-110 transition-transform" />
                       </Button>
                     </Link>
                   </div>
@@ -278,7 +282,8 @@ export default function AuditLogs() {
           </div>
 
           {filteredLogs.length === 0 && (
-            <div className="text-center py-12">
+            <div className="text-center py-12 animate-empty">
+              <FileText className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4 animate-float" />
               <p className="text-muted-foreground">No audit logs found matching your criteria</p>
             </div>
           )}

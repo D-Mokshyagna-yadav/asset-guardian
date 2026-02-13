@@ -74,14 +74,26 @@ export interface ApiResponse<T = unknown> {
   }>;
 }
 
+export interface PaginationInfo {
+  page: number;
+  limit: number;
+  total: number;
+  pages: number;
+}
+
+// For endpoints that return { success, data: T[], pagination } (e.g., assignments)
 export interface PaginatedResponse<T> {
   success: boolean;
   data: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    pages: number;
+  pagination: PaginationInfo;
+}
+
+// For endpoints that nest data inside a named key: { success, data: { [key]: T[], pagination } }
+export interface NestedPaginatedResponse<T> {
+  success: boolean;
+  data: {
+    [key: string]: T[] | PaginationInfo;
+    pagination: PaginationInfo;
   };
 }
 
@@ -100,11 +112,15 @@ export const authApi = {
     return api.get<ApiResponse<{ user: User }>>('/auth/profile');
   },
   
-  changePassword: (currentPassword: string, newPassword: string) =>
+  changePassword: (currentPassword: string, newPassword: string, confirmPassword?: string) =>
     api.patch<ApiResponse>('/auth/change-password', {
       currentPassword,
       newPassword,
+      confirmPassword: confirmPassword || newPassword,
     }),
+
+  updateProfile: (data: { name?: string; email?: string }) =>
+    api.patch<ApiResponse<{ user: User }>>('/auth/profile', data),
 };
 
 // Devices API
@@ -116,7 +132,7 @@ export const devicesApi = {
     status?: string;
     category?: string;
     departmentId?: string;
-  }) => api.get<PaginatedResponse<Device>>('/devices', { params }),
+  }) => api.get<ApiResponse<{ devices: Device[]; pagination: PaginationInfo }>>('/devices', { params }),
   
   getDeviceById: (id: string) => api.get<ApiResponse<{ device: Device }>>(`/devices/${id}`),
   
@@ -133,6 +149,12 @@ export const devicesApi = {
     byCategory: Record<string, number>;
     byDepartment: Record<string, number>;
   }>>('/devices/stats'),
+
+  getAvailableQuantity: (id: string) => api.get<ApiResponse<{
+    total: number;
+    assigned: number;
+    available: number;
+  }>>(`/devices/${id}/availability`),
 };
 
 // Departments API
@@ -141,7 +163,7 @@ export const departmentsApi = {
     page?: number;
     limit?: number;
     search?: string;
-  }) => api.get<PaginatedResponse<Department>>('/departments', { params }),
+  }) => api.get<ApiResponse<{ departments: Department[]; pagination: PaginationInfo }>>('/departments', { params }),
   
   getDepartmentById: (id: string) => api.get<ApiResponse<{ department: Department }>>(`/departments/${id}`),
   
@@ -152,6 +174,11 @@ export const departmentsApi = {
     api.patch<ApiResponse<{ department: Department }>>(`/departments/${id}`, data),
   
   deleteDepartment: (id: string) => api.delete<ApiResponse>(`/departments/${id}`),
+
+  getDepartmentStats: () => api.get<ApiResponse<{
+    departmentStats: Array<{ department: Department; userCount: number; deviceCount: number }>;
+    summary: { totalDepartments: number; totalUsers: number; totalDevices: number };
+  }>>('/departments/stats'),
 };
 
 // Locations API
@@ -162,9 +189,9 @@ export const locationsApi = {
     search?: string;
     building?: string;
     departmentId?: string;
-  }) => api.get<PaginatedResponse<Location>>('/locations', { params }),
+  }) => api.get<ApiResponse<{ locations: Location[]; pagination: PaginationInfo }>>('/locations', { params }),
   
-  getLocationById: (id: string) => api.get<ApiResponse<{ location: Location }>>(`/locations/${id}`),
+  getLocationById: (id: string) => api.get<ApiResponse<Location>>(`/locations/${id}`),
   
   getLocationsByDepartment: (departmentId: string) => 
     api.get<ApiResponse<{ locations: Location[] }>>(`/locations/department/${departmentId}`),
@@ -176,6 +203,8 @@ export const locationsApi = {
     api.patch<ApiResponse<{ location: Location }>>(`/locations/${id}`, data),
   
   deleteLocation: (id: string) => api.delete<ApiResponse>(`/locations/${id}`),
+
+  getBuildingList: () => api.get<ApiResponse<string[]>>('/locations/buildings/list'),
 };
 
 // Assignments API
@@ -196,7 +225,17 @@ export const assignmentsApi = {
   updateAssignment: (id: string, data: Partial<Assignment>) =>
     api.patch<ApiResponse<{ assignment: Assignment }>>(`/assignments/${id}`, data),
   
+  unassignDevice: (id: string) =>
+    api.patch<ApiResponse<{ assignment: Assignment }>>(`/assignments/${id}`, { status: 'RETURNED' }),
+  
   deleteAssignment: (id: string) => api.delete<ApiResponse>(`/assignments/${id}`),
+
+  getAssignmentStats: () => api.get<ApiResponse<{
+    total: number;
+    active: number;
+    returned: number;
+    maintenance: number;
+  }>>('/assignments/stats'),
 };
 
 // Audit Logs API
@@ -205,13 +244,28 @@ export const auditLogsApi = {
     page?: number;
     limit?: number;
     entityType?: string;
-    entityId?: string;
     action?: string;
+    performedBy?: string;
     startDate?: string;
     endDate?: string;
-  }) => api.get<PaginatedResponse<AuditLog>>('/audit-logs', { params }),
+  }) => api.get<ApiResponse<{ auditLogs: AuditLog[]; pagination: PaginationInfo }>>('/audit-logs', { params }),
   
-  getAuditLogById: (id: string) => api.get<ApiResponse<{ log: AuditLog }>>(`/audit-logs/${id}`),
+  getAuditLogById: (id: string) => api.get<ApiResponse<AuditLog>>(`/audit-logs/${id}`),
+
+  getAuditLogsByEntity: (entityType: string, entityId: string, params?: { page?: number; limit?: number }) =>
+    api.get<ApiResponse<{ auditLogs: AuditLog[]; pagination: PaginationInfo }>>(`/audit-logs/${entityType}/${entityId}`, { params }),
+
+  getAuditLogStats: () => api.get<ApiResponse<{
+    totalLogs: number;
+    todayLogs: number;
+    actionBreakdown: Array<{ _id: string; count: number }>;
+    entityTypeBreakdown: Array<{ _id: string; count: number }>;
+  }>>('/audit-logs/stats'),
+
+  deleteAuditLog: (id: string) => api.delete<ApiResponse>(`/audit-logs/${id}`),
+
+  deleteOldAuditLogs: (days?: number) =>
+    api.post<ApiResponse & { deletedCount?: number }>('/audit-logs/cleanup/old-logs', { days }),
 };
 
 // Categories API

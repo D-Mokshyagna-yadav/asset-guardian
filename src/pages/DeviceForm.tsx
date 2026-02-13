@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { devicesApi, departmentsApi, locationsApi } from '@/lib/api';
 import { Department, Location, Device } from '@/types';
 import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
 
 const DEVICE_CATEGORIES = [
   'Network Switch',
@@ -131,7 +132,8 @@ export default function DeviceForm() {
       setLocationsLoading(true);
       try {
         const res = await locationsApi.getLocationsByDepartment(formData.departmentId);
-        setLocations(res.data.data?.locations || res.data.data || []);
+        const locs = res.data.data?.locations;
+        setLocations(Array.isArray(locs) ? locs : []);
       } catch (err) {
         console.error('Failed to load locations for department:', err);
         setLocations([]);
@@ -227,13 +229,13 @@ export default function DeviceForm() {
         serverErrors.forEach((err: any) => {
           if (err.field) fieldErrors[err.field] = err.message;
         });
-        fieldErrors.submit = serverErrors.map((e: any) => e.message).join(', ');
         setErrors(fieldErrors);
+        toast.error(serverErrors.map((e: any) => e.message).join(', '));
         setTimeout(() => scrollToFirstError(fieldErrors), 100);
       } else {
         const errMsg = error?.response?.data?.message || 'Failed to save device. Please try again.';
         setErrors({ submit: errMsg });
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        toast.error(errMsg);
       }
     } finally {
       setIsLoading(false);
@@ -299,12 +301,32 @@ export default function DeviceForm() {
   };
 
   if (dataLoading) {
-    return <div className="p-6 lg:p-8 text-center text-muted-foreground">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-muted/20 to-muted/50 p-4 lg:p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="shimmer h-9 w-36 rounded-md mb-6" />
+          <div className="bg-card border rounded-lg shadow-lg p-6 space-y-6">
+            <div className="space-y-2">
+              <div className="shimmer h-7 w-40" />
+              <div className="shimmer h-4 w-64" />
+            </div>
+            <div className="grid sm:grid-cols-2 gap-6">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="shimmer h-4 w-24" />
+                  <div className="shimmer h-10 w-full rounded-md" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-muted/20 to-muted/50 p-4 lg:p-8">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto animate-slide-up">
         <Button variant="ghost" onClick={() => navigate('/inventory')} className="mb-6 hover:bg-muted">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Inventory
@@ -344,7 +366,7 @@ export default function DeviceForm() {
             )}
 
             {errors.submit && (
-              <Alert variant="destructive" className="mb-6">
+              <Alert variant="destructive" className="mb-6 animate-slide-down">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{errors.submit}</AlertDescription>
               </Alert>
@@ -603,8 +625,8 @@ export default function DeviceForm() {
 
               {/* Actions */}
               <div className="flex gap-3 pt-6 justify-between">
-                <Button type="button" variant="outline" onClick={() => navigate('/inventory')} disabled={isLoading} className="px-8">Cancel</Button>
-                <Button type="submit" disabled={isLoading} className="px-8 bg-primary hover:bg-primary/90">
+                <Button type="button" variant="outline" onClick={() => navigate('/inventory')} disabled={isLoading} className="px-8 btn-press">Cancel</Button>
+                <Button type="submit" disabled={isLoading} className="px-8 bg-primary hover:bg-primary/90 btn-press">
                   {isLoading ? 'Saving...' : id ? 'Update Device' : 'Create Device'}
                 </Button>
               </div>

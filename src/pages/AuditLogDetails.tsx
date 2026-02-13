@@ -157,12 +157,20 @@ export default function AuditLogDetails() {
   }, [id]);
 
   if (loading) {
-    return <div className="p-6 lg:p-8 text-center text-muted-foreground">Loading...</div>;
+    return (
+      <div className="p-6 lg:p-8">
+        <div className="shimmer h-9 w-36 rounded-md mb-6" />
+        <div className="max-w-4xl mx-auto space-y-6">
+          <div className="shimmer h-32 rounded-lg" />
+          <div className="shimmer h-48 rounded-lg" />
+        </div>
+      </div>
+    );
   }
 
   if (!log) {
     return (
-      <div className="p-6 lg:p-8 animate-fade-in">
+      <div className="p-6 lg:p-8">
         <div className="text-center py-12">
           <p className="text-muted-foreground mb-4">Audit log not found</p>
           <Button variant="outline" onClick={() => navigate('/audit-logs')}>
@@ -178,7 +186,7 @@ export default function AuditLogDetails() {
   const entityLink = getEntityLink(log.entityType, log.entityId);
 
   return (
-    <div className="p-6 lg:p-8 animate-fade-in">
+    <div className="p-6 lg:p-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
@@ -206,7 +214,7 @@ export default function AuditLogDetails() {
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Action Summary */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <FileText className="h-5 w-5 text-primary" />
@@ -231,7 +239,7 @@ export default function AuditLogDetails() {
 
           {/* Data Changes */}
           {(log.oldData || log.newData) && (
-            <Card>
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <ArrowRight className="h-5 w-5 text-primary" />
@@ -274,9 +282,9 @@ export default function AuditLogDetails() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-6 stagger-children">
           {/* Entity Reference */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <EntityIcon className="h-5 w-5 text-primary" />
@@ -305,7 +313,7 @@ export default function AuditLogDetails() {
           </Card>
 
           {/* Performed By */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <User className="h-5 w-5 text-primary" />
@@ -325,7 +333,7 @@ export default function AuditLogDetails() {
           </Card>
 
           {/* Timestamp */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Calendar className="h-5 w-5 text-primary" />
@@ -354,7 +362,7 @@ export default function AuditLogDetails() {
           </Card>
 
           {/* IP Address */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Globe className="h-5 w-5 text-primary" />

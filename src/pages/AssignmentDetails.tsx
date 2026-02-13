@@ -13,14 +13,21 @@ import {
   Calendar,
   FileText,
   Eye,
+  Undo2,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import { Assignment, Device, Department, Location } from '@/types';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { toast } from 'sonner';
 
 export default function AssignmentDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [assignment, setAssignment] = useState<Assignment | null>(null);
   const [loading, setLoading] = useState(true);
+  const [unassigning, setUnassigning] = useState(false);
+  const confirm = useConfirm();
 
   useEffect(() => {
     const loadAssignment = async () => {
@@ -39,17 +46,41 @@ export default function AssignmentDetails() {
 
   if (loading) {
     return (
-      <div className="p-6 lg:p-8 animate-fade-in">
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Loading...</p>
+      <div className="p-6 lg:p-8">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="shimmer h-10 w-10 rounded-md" />
+          <div className="space-y-2">
+            <div className="shimmer h-6 w-48" />
+            <div className="shimmer h-4 w-32" />
+          </div>
+        </div>
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 skeleton h-48 rounded-lg" />
+          <div className="shimmer h-48 rounded-lg" />
         </div>
       </div>
     );
   }
 
+  const handleUnassign = async () => {
+    if (!id) return;
+    const ok = await confirm({ title: 'Unassign Device', description: 'This will mark this assignment as returned. The device will be moved back to stock and become available for new assignments.', confirmText: 'Yes, Unassign', variant: 'warning' });
+    if (!ok) return;
+    setUnassigning(true);
+    try {
+      const res = await assignmentsApi.unassignDevice(id);
+      setAssignment(res.data.data?.assignment || { ...assignment!, status: 'RETURNED', returnedAt: new Date().toISOString() });
+      toast.success('Device unassigned successfully. It has been returned to stock.');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to unassign device.');
+    } finally {
+      setUnassigning(false);
+    }
+  };
+
   if (!assignment) {
     return (
-      <div className="p-6 lg:p-8 animate-fade-in">
+      <div className="p-6 lg:p-8">
         <div className="text-center py-12">
           <p className="text-muted-foreground mb-4">Assignment not found</p>
           <Button variant="outline" onClick={() => navigate('/assignments')}>
@@ -66,7 +97,7 @@ export default function AssignmentDetails() {
   const location = typeof assignment.locationId === 'object' ? (assignment.locationId as Location) : null;
 
   return (
-    <div className="p-6 lg:p-8 animate-fade-in">
+    <div className="p-6 lg:p-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
@@ -85,14 +116,27 @@ export default function AssignmentDetails() {
             </div>
           </div>
         </div>
-        <StatusBadge status={assignment.status} />
+        <div className="flex items-center gap-2">
+          {assignment.status === 'ACTIVE' && (
+            <Button
+              variant="outline"
+              className="text-orange-600 border-orange-300 hover:bg-orange-50 btn-press"
+              onClick={handleUnassign}
+              disabled={unassigning}
+            >
+              <Undo2 className="h-4 w-4 mr-2" />
+              {unassigning ? 'Unassigning...' : 'Unassign Device'}
+            </Button>
+          )}
+          <StatusBadge status={assignment.status} />
+        </div>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Device Information */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Monitor className="h-5 w-5 text-primary" />
@@ -123,7 +167,7 @@ export default function AssignmentDetails() {
                     </div>
                   </div>
                   <Link to={`/inventory/${device.id}`}>
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" className="btn-press">
                       <Eye className="h-4 w-4 mr-2" />
                       View Device
                     </Button>
@@ -137,7 +181,7 @@ export default function AssignmentDetails() {
 
           {/* Target Location */}
           {location && (
-            <Card>
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <MapPin className="h-5 w-5 text-primary" />
@@ -171,7 +215,7 @@ export default function AssignmentDetails() {
 
           {/* Notes */}
           {assignment.notes && (
-            <Card>
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <FileText className="h-5 w-5 text-primary" />
@@ -186,9 +230,9 @@ export default function AssignmentDetails() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-6 stagger-children">
           {/* Department */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Building2 className="h-5 w-5 text-primary" />
@@ -216,7 +260,7 @@ export default function AssignmentDetails() {
           </Card>
 
           {/* Timeline */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Calendar className="h-5 w-5 text-primary" />

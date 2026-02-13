@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { devicesApi, departmentsApi, locationsApi, auditLogsApi } from '@/lib/api';
+import { devicesApi, departmentsApi, locationsApi, auditLogsApi, assignmentsApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { Device, Department, Location, AuditLog } from '@/types';
 import { StatusBadge } from '@/components/ui/StatusBadge';
@@ -13,12 +13,17 @@ import {
   MapPin,
   Building2,
   Calendar,
-  DollarSign,
+  IndianRupee,
   Shield,
   Network,
   FileText,
   Clock,
+  Undo2,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { toast } from 'sonner';
 
 export default function DeviceDetails() {
   const { id } = useParams();
@@ -28,6 +33,8 @@ export default function DeviceDetails() {
   const [location, setLocation] = useState<Location | null>(null);
   const [deviceLogs, setDeviceLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unassigning, setUnassigning] = useState(false);
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (!id) return;
@@ -50,8 +57,8 @@ export default function DeviceDetails() {
           } catch {}
         }
         try {
-          const logsRes = await auditLogsApi.getAuditLogs({ entityId: id, entityType: 'Device', limit: 20 } as any);
-          setDeviceLogs(logsRes.data.data?.auditLogs || []);
+          const logsRes = await auditLogsApi.getAuditLogsByEntity('Device', id, { limit: 20 });
+          setDeviceLogs(logsRes.data.data?.auditLogs || (Array.isArray(logsRes.data.data) ? logsRes.data.data : []));
         } catch {}
       } catch {
         setDevice(null);
@@ -63,22 +70,69 @@ export default function DeviceDetails() {
   }, [id]);
 
   const handleDelete = async () => {
-    if (!id || !confirm('Are you sure you want to delete this device?')) return;
+    if (!id) return;
+    const ok = await confirm({ title: 'Delete Device', description: 'This will permanently remove this device and all its associated data from the system. Any linked assignments or audit records may also be affected. This action cannot be undone.', confirmText: 'Yes, Delete Device', variant: 'destructive' });
+    if (!ok) return;
     try {
       await devicesApi.deleteDevice(id);
+      toast.success('Device deleted successfully.');
       navigate('/inventory');
-    } catch (err) {
-      console.error('Failed to delete device', err);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to delete device.');
+    }
+  };
+
+  const handleUnassign = async () => {
+    if (!id) return;
+    const ok = await confirm({ title: 'Unassign Device', description: 'This will return all active assignments for this device back to stock. The device status will be updated accordingly.', confirmText: 'Yes, Unassign', variant: 'warning' });
+    if (!ok) return;
+    setUnassigning(true);
+    try {
+      const res = await assignmentsApi.getAssignments({ deviceId: id, status: 'ACTIVE', limit: 100 });
+      const activeAssignments = res.data.data || [];
+      if (activeAssignments.length === 0) {
+        toast.error('No active assignments found for this device.');
+        return;
+      }
+      await Promise.all(activeAssignments.map((a: any) => assignmentsApi.unassignDevice(a.id || a._id)));
+      const devRes = await devicesApi.getDeviceById(id);
+      const dev = devRes.data.data?.device;
+      if (dev) setDevice(dev);
+      toast.success(`Device unassigned successfully. ${activeAssignments.length} assignment(s) returned to stock.`);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Failed to unassign device.');
+    } finally {
+      setUnassigning(false);
     }
   };
 
   if (loading) {
-    return <div className="p-6 lg:p-8 text-center text-muted-foreground">Loading...</div>;
+    return (
+      <div className="p-6 lg:p-8">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="shimmer h-10 w-10 rounded-md" />
+          <div className="space-y-2">
+            <div className="shimmer h-7 w-48" />
+            <div className="shimmer h-4 w-28" />
+          </div>
+        </div>
+        <div className="grid lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            <div className="shimmer h-48 rounded-lg" />
+            <div className="shimmer h-40 rounded-lg" />
+          </div>
+          <div className="space-y-6">
+            <div className="shimmer h-40 rounded-lg" />
+            <div className="shimmer h-40 rounded-lg" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!device) {
     return (
-      <div className="p-6 lg:p-8 animate-fade-in">
+      <div className="p-6 lg:p-8">
         <div className="text-center py-12">
           <p className="text-muted-foreground mb-4">Device not found</p>
           <Button variant="outline" onClick={() => navigate('/inventory')}>
@@ -104,7 +158,7 @@ export default function DeviceDetails() {
   const warranty = warrantyStatus();
 
   return (
-    <div className="p-6 lg:p-8 animate-fade-in">
+    <div className="p-6 lg:p-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div className="flex items-center gap-4">
@@ -120,11 +174,22 @@ export default function DeviceDetails() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => navigate(`/inventory/${id}/edit`)}>
+          {device.status === 'ASSIGNED' && (
+            <Button
+              variant="outline"
+              className="text-orange-600 border-orange-300 hover:bg-orange-50 btn-press"
+              onClick={handleUnassign}
+              disabled={unassigning}
+            >
+              <Undo2 className="h-4 w-4 mr-2" />
+              {unassigning ? 'Unassigning...' : 'Unassign'}
+            </Button>
+          )}
+          <Button variant="outline" onClick={() => navigate(`/inventory/${id}/edit`)} className="btn-press">
             <Edit className="h-4 w-4 mr-2" />
             Edit Device
           </Button>
-          <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10" onClick={handleDelete}>
+          <Button variant="outline" className="text-destructive border-destructive/30 hover:bg-destructive/10 btn-press" onClick={handleDelete}>
             <Trash2 className="h-4 w-4 mr-2" />
             Delete
           </Button>
@@ -135,7 +200,7 @@ export default function DeviceDetails() {
         {/* Main Info */}
         <div className="lg:col-span-2 space-y-6">
           {/* Device Information */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Monitor className="h-5 w-5 text-primary" />
@@ -170,7 +235,7 @@ export default function DeviceDetails() {
 
           {/* Network Information */}
           {(device.macAddress || device.ipAddress) && (
-            <Card>
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Network className="h-5 w-5 text-primary" />
@@ -197,10 +262,10 @@ export default function DeviceDetails() {
           )}
 
           {/* Purchase & Warranty */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <DollarSign className="h-5 w-5 text-primary" />
+                <IndianRupee className="h-5 w-5 text-primary" />
                 Purchase & Warranty
               </CardTitle>
             </CardHeader>
@@ -212,7 +277,7 @@ export default function DeviceDetails() {
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Cost</p>
-                  <p className="text-sm font-medium text-emerald-600">${device.cost.toLocaleString()}</p>
+                  <p className="text-sm font-medium text-emerald-600">₹{device.cost.toLocaleString('en-IN')}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-xs text-muted-foreground uppercase tracking-wider">Vendor</p>
@@ -247,7 +312,7 @@ export default function DeviceDetails() {
 
           {/* Activity Log */}
           {deviceLogs.length > 0 && (
-            <Card>
+            <Card className="card-hover">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Clock className="h-5 w-5 text-primary" />
@@ -280,9 +345,9 @@ export default function DeviceDetails() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-6 stagger-children">
           {/* Location Card */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <MapPin className="h-5 w-5 text-primary" />
@@ -318,7 +383,7 @@ export default function DeviceDetails() {
           </Card>
 
           {/* Department Card */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Building2 className="h-5 w-5 text-primary" />
@@ -350,7 +415,7 @@ export default function DeviceDetails() {
           </Card>
 
           {/* Timestamps */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Calendar className="h-5 w-5 text-primary" />

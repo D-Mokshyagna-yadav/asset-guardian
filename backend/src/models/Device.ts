@@ -209,7 +209,7 @@ deviceSchema.index({ createdAt: -1 });
 deviceSchema.index({
   deviceName: 'text',
   brand: 'text',
-  model: 'text',
+  deviceModel: 'text',
   category: 'text',
   assetTag: 'text',
   serialNumber: 'text',

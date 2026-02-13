@@ -372,15 +372,39 @@ export const getProfile = catchAsync(async (req: AuthenticatedRequest, res: Resp
 });
 
 export const updateProfile = catchAsync(async (req: AuthenticatedRequest, res: Response) => {
-  // Users can only update certain fields
-  const allowedFields = ['name'];
+  // Users can update name and email
+  const allowedFields = ['name', 'email'];
   const updates: any = {};
   
   allowedFields.forEach(field => {
     if (req.body[field] !== undefined) {
-      updates[field] = req.body[field];
+      updates[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
     }
   });
+
+  // Validate name if provided
+  if (updates.name !== undefined) {
+    if (!updates.name || updates.name.length < 2) {
+      throw new AppError('Name must be at least 2 characters long', 400);
+    }
+    if (updates.name.length > 100) {
+      throw new AppError('Name cannot exceed 100 characters', 400);
+    }
+  }
+
+  // Validate email if provided
+  if (updates.email !== undefined) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(updates.email)) {
+      throw new AppError('Please provide a valid email address', 400);
+    }
+    // Check for duplicate email (excluding current user)
+    const existingUser = await User.findOne({ email: updates.email.toLowerCase(), _id: { $ne: req.user!._id } });
+    if (existingUser) {
+      throw new AppError('This email address is already in use by another account', 409);
+    }
+    updates.email = updates.email.toLowerCase();
+  }
 
   const user = await User.findByIdAndUpdate(
     req.user!._id,

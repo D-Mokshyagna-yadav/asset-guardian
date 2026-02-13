@@ -6,7 +6,9 @@ import { Badge } from '@/components/ui/badge';
 import { devicesApi, departmentsApi, locationsApi } from '@/lib/api';
 import { useState, useEffect } from 'react';
 import { Device, Department, Location } from '@/types';
-import { ArrowLeft, Edit, Trash2, Package, MapPin, DollarSign, Zap, FileText, Calendar, Shield, AlertTriangle, CheckCircle2, Clock, Eye } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Package, MapPin, IndianRupee, Zap, FileText, Calendar, Shield, AlertTriangle, CheckCircle2, Clock, Eye } from 'lucide-react';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { toast } from 'sonner';
 
 export default function DevicePreview() {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ export default function DevicePreview() {
   const [department, setDepartment] = useState<Department | null>(null);
   const [location, setLocation] = useState<Location | null>(null);
   const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
 
   useEffect(() => {
     if (!id) return;
@@ -46,7 +49,22 @@ export default function DevicePreview() {
   }, [id]);
 
   if (loading) {
-    return <div className="p-6 lg:p-8 text-center text-muted-foreground">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-muted/20 to-muted/50 p-6 lg:p-8">
+        <div className="shimmer h-9 w-28 rounded-md mb-8" />
+        <div className="shimmer h-56 rounded-xl mb-8" />
+        <div className="grid lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <div className="shimmer h-48 rounded-lg" />
+            <div className="shimmer h-40 rounded-lg" />
+          </div>
+          <div className="space-y-8">
+            <div className="shimmer h-56 rounded-lg" />
+            <div className="shimmer h-40 rounded-lg" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!device) {
@@ -89,9 +107,9 @@ export default function DevicePreview() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-IN', {
       style: 'currency',
-      currency: 'USD'
+      currency: 'INR'
     }).format(amount);
   };
 
@@ -108,7 +126,7 @@ export default function DevicePreview() {
         <Button 
           variant="ghost" 
           onClick={() => navigate('/inventory')}
-          className="mb-4 hover:bg-muted"
+          className="mb-4 hover:bg-muted btn-press"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Inventory
@@ -119,7 +137,7 @@ export default function DevicePreview() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         {/* Main Device Card */}
         <div className="lg:col-span-2">
-          <Card className="overflow-hidden border-2 border-primary/20 shadow-lg">
+          <Card className="overflow-hidden border-2 border-primary/20 shadow-lg card-hover">
             <div className="h-64 bg-gradient-to-br from-primary/10 via-primary/5 to-background flex items-center justify-center relative overflow-hidden">
               <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
               <Package className="h-32 w-32 text-primary/30 relative z-10" />
@@ -157,15 +175,15 @@ export default function DevicePreview() {
         </div>
 
         {/* Quick Stats */}
-        <div className="space-y-4">
-          <Card>
+        <div className="space-y-4 stagger-children">
+          <Card className="card-hover">
             <CardContent className="p-6">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Status</p>
               <StatusBadge status={device.status} />
             </CardContent>
           </Card>
 
-          <Card className="bg-emerald-500/10 border-emerald-500/20">
+          <Card className="bg-emerald-500/10 border-emerald-500/20 card-hover">
             <CardContent className="p-6">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Available</p>
               <p className="text-3xl font-bold text-emerald-600">
@@ -175,7 +193,7 @@ export default function DevicePreview() {
             </CardContent>
           </Card>
 
-          <Card className="bg-blue-500/10 border-blue-500/20">
+          <Card className="bg-blue-500/10 border-blue-500/20 card-hover">
             <CardContent className="p-6">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Assigned</p>
               <p className="text-3xl font-bold text-blue-600">{finalInUse}</p>
@@ -183,7 +201,7 @@ export default function DevicePreview() {
             </CardContent>
           </Card>
 
-          <Card className="bg-amber-500/10 border-amber-500/20">
+          <Card className="bg-amber-500/10 border-amber-500/20 card-hover">
             <CardContent className="p-6">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">Total</p>
               <p className="text-3xl font-bold text-amber-600">{device.quantity}</p>
@@ -198,7 +216,7 @@ export default function DevicePreview() {
         {/* Left Column */}
         <div className="lg:col-span-2 space-y-6">
           {/* Technical Specifications */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2">
                 <Zap className="h-5 w-5 text-primary" />
@@ -228,7 +246,7 @@ export default function DevicePreview() {
           </Card>
 
           {/* Location & Assignment */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2">
                 <MapPin className="h-5 w-5 text-primary" />
@@ -250,10 +268,10 @@ export default function DevicePreview() {
           </Card>
 
           {/* Financial Details */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-primary" />
+                <IndianRupee className="h-5 w-5 text-primary" />
                 Financial Information
               </CardTitle>
             </CardHeader>
@@ -305,7 +323,7 @@ export default function DevicePreview() {
           </Card>
 
           {/* Warranty */}
-          <Card>
+          <Card className="card-hover">
             <CardHeader className="border-b">
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5 text-primary" />
@@ -366,7 +384,7 @@ export default function DevicePreview() {
         <div className="space-y-6">
           {/* Features */}
           {device.features && device.features.length > 0 && (
-            <Card>
+            <Card className="card-hover">
               <CardHeader className="border-b">
                 <CardTitle className="text-base">Features</CardTitle>
               </CardHeader>
@@ -387,7 +405,7 @@ export default function DevicePreview() {
 
           {/* Notes */}
           {device.notes && (
-            <Card>
+            <Card className="card-hover">
               <CardHeader className="border-b">
                 <CardTitle className="flex items-center gap-2 text-base">
                   <FileText className="h-5 w-5 text-primary" />
@@ -418,12 +436,15 @@ export default function DevicePreview() {
                     variant="destructive"
                     className="w-full"
                     onClick={async () => {
-                      if (!id || !confirm('Are you sure you want to delete this device?')) return;
+                      if (!id) return;
+                      const ok = await confirm({ title: 'Delete Device', description: 'This will permanently remove this device and all its data from the system. This action cannot be undone.', confirmText: 'Yes, Delete', variant: 'destructive' });
+                      if (!ok) return;
                       try {
                         await devicesApi.deleteDevice(id);
+                        toast.success('Device deleted successfully.');
                         navigate('/inventory');
-                      } catch (err) {
-                        console.error('Failed to delete device', err);
+                      } catch (err: any) {
+                        toast.error(err?.response?.data?.message || 'Failed to delete device.');
                       }
                     }}
                   >
@@ -442,7 +463,7 @@ export default function DevicePreview() {
           </Card>
 
           {/* Metadata */}
-          <Card className="text-xs">
+          <Card className="text-xs card-hover">
             <CardHeader className="border-b py-3">
               <p className="text-muted-foreground uppercase tracking-wider font-semibold">Metadata</p>
             </CardHeader>
