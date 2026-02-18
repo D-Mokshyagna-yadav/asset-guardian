@@ -205,6 +205,9 @@ export const locationsApi = {
   deleteLocation: (id: string) => api.delete<ApiResponse>(`/locations/${id}`),
 
   getBuildingList: () => api.get<ApiResponse<string[]>>('/locations/buildings/list'),
+
+  getLocationsByBuilding: (building: string) =>
+    api.get<ApiResponse<Location[]>>(`/locations/building/${encodeURIComponent(building)}`),
 };
 
 // Assignments API
@@ -269,10 +272,21 @@ export const auditLogsApi = {
 };
 
 // Categories API
+export interface CategoryItem {
+  _id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export const categoriesApi = {
-  getCategories: () => api.get<ApiResponse<{ categories: string[] }>>('/categories'),
+  getCategories: () => api.get<ApiResponse<{ categories: CategoryItem[] }>>('/categories'),
+  getCategoryById: (id: string) => api.get<ApiResponse<{ category: CategoryItem }>>(`/categories/${id}`),
   createCategory: (data: { name: string; description?: string }) =>
-    api.post<ApiResponse>('/categories', data),
+    api.post<ApiResponse<{ category: CategoryItem }>>('/categories', data),
+  updateCategory: (id: string, data: { name?: string; description?: string }) =>
+    api.put<ApiResponse<{ category: CategoryItem }>>(`/categories/${id}`, data),
   deleteCategory: (id: string) => api.delete<ApiResponse>(`/categories/${id}`),
 };
 
@@ -290,6 +304,9 @@ export interface StatusStyleConfig {
 }
 
 export const configurationApi = {
+  getAll: () => api.get<ApiResponse<Record<string, unknown>[]>>('/configuration'),
+  getByKey: (key: string) => api.get<ApiResponse<{ key: string; value: unknown }>>(`/configuration/${key}`),
+  update: (key: string, value: unknown) => api.put<ApiResponse>(`/configuration/${key}`, { value }),
   getRoleColors: () => api.get<ApiResponse<RoleColorConfig[]>>('/configuration/enum/role-colors'),
   getStatusStyles: () => api.get<ApiResponse<StatusStyleConfig[]>>('/configuration/enum/status-styles'),
 };

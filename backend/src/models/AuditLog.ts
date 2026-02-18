@@ -19,7 +19,7 @@ const auditLogSchema = new Schema<IAuditLog>({
     type: String,
     required: [true, 'Entity type is required'],
     enum: {
-      values: ['Device', 'User', 'Assignment', 'Department', 'Location'],
+      values: ['Device', 'User', 'Assignment', 'Department', 'Location', 'AuditLog', 'Category', 'Configuration'],
       message: 'Invalid entity type',
     },
   },
@@ -31,14 +31,14 @@ const auditLogSchema = new Schema<IAuditLog>({
     type: String,
     required: [true, 'Action is required'],
     enum: {
-      values: ['CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE', 'LOGIN', 'LOGOUT'],
+      values: ['CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE', 'LOGIN', 'LOGOUT', 'PASSWORD_CHANGE', 'TOKEN_REFRESH'],
       message: 'Invalid action type',
     },
   },
   performedBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: [true, 'Performed by user is required'],
+    default: null,
   },
   oldData: {
     type: Schema.Types.Mixed,
@@ -48,16 +48,7 @@ const auditLogSchema = new Schema<IAuditLog>({
   },
   ipAddress: {
     type: String,
-    required: [true, 'IP address is required'],
-    validate: {
-      validator: function(v: string) {
-        // IPv4 or IPv6 validation
-        const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
-        const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
-        return ipv4Regex.test(v) || ipv6Regex.test(v) || v === '::1' || v === 'localhost';
-      },
-      message: 'Please enter a valid IP address',
-    },
+    default: 'unknown',
   },
   userAgent: {
     type: String,

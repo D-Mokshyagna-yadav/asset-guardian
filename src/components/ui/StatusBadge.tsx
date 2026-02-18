@@ -17,27 +17,42 @@ const DEFAULT_STATUS_STYLES: Record<string, string> = {
   RETURNED: 'bg-gray-100 text-gray-800 border-gray-200',
 };
 
+// Module-level cache so we only fetch status styles once across all StatusBadge instances
+let cachedStyles: Record<string, string> | null = null;
+let fetchPromise: Promise<Record<string, string>> | null = null;
+
+function getStatusStyles(): Promise<Record<string, string>> {
+  if (cachedStyles) return Promise.resolve(cachedStyles);
+  if (fetchPromise) return fetchPromise;
+
+  fetchPromise = configurationApi.getStatusStyles()
+    .then((response) => {
+      const styles = response.data?.data || [];
+      const styleMap: Record<string, string> = {};
+      styles.forEach((style: StatusStyleConfig) => {
+        styleMap[style.status] = style.classes;
+      });
+      cachedStyles = styleMap;
+      return styleMap;
+    })
+    .catch((error) => {
+      console.error('Error fetching status styles:', error);
+      fetchPromise = null; // Allow retry on failure
+      return DEFAULT_STATUS_STYLES;
+    });
+
+  return fetchPromise;
+}
+
 export function StatusBadge({ status, className }: StatusBadgeProps) {
-  const [statusStyles, setStatusStyles] = useState<Record<string, string>>(DEFAULT_STATUS_STYLES);
+  const [statusStyles, setStatusStyles] = useState<Record<string, string>>(cachedStyles || DEFAULT_STATUS_STYLES);
 
   useEffect(() => {
-    const fetchStatusStyles = async () => {
-      try {
-        const response = await configurationApi.getStatusStyles();
-        const styles = Array.isArray(response.data) ? response.data : (response.data?.data || []);
-        const styleMap: Record<string, string> = {};
-        styles.forEach((style: StatusStyleConfig) => {
-          styleMap[style.status] = style.classes;
-        });
-        setStatusStyles(styleMap);
-      } catch (error) {
-        console.error('Error fetching status styles:', error);
-        // Fall back to defaults on error
-        setStatusStyles(DEFAULT_STATUS_STYLES);
-      }
-    };
-
-    fetchStatusStyles();
+    let cancelled = false;
+    getStatusStyles().then((styles) => {
+      if (!cancelled) setStatusStyles(styles);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const formattedStatus = status.replace(/_/g, ' ');

@@ -8,12 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { AlertCircle, ArrowLeft, Plus, X, MapPin, Building2, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { devicesApi, departmentsApi, locationsApi } from '@/lib/api';
+import { devicesApi, departmentsApi, locationsApi, categoriesApi, type CategoryItem } from '@/lib/api';
 import { Department, Location, Device } from '@/types';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 
-const DEVICE_CATEGORIES = [
+const FALLBACK_CATEGORIES = [
   'Network Switch',
   'Wireless AP',
   'Server',
@@ -42,6 +42,7 @@ export default function DeviceForm() {
   const [locationsLoading, setLocationsLoading] = useState(false);
   const [existingDevice, setExistingDevice] = useState<Device | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [deviceCategories, setDeviceCategories] = useState<string[]>(FALLBACK_CATEGORIES);
 
   const [formData, setFormData] = useState({
     assetTag: '',
@@ -76,8 +77,15 @@ export default function DeviceForm() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const deptRes = await departmentsApi.getDepartments({ limit: 100 });
+        const [deptRes, catRes] = await Promise.all([
+          departmentsApi.getDepartments({ limit: 100 }),
+          categoriesApi.getCategories(),
+        ]);
         setDepartments(deptRes.data.data?.departments || []);
+        const cats = catRes.data.data?.categories;
+        if (cats && cats.length > 0) {
+          setDeviceCategories(cats.map((c: CategoryItem) => c.name));
+        }
 
         if (id) {
           const devRes = await devicesApi.getDeviceById(id);
@@ -397,7 +405,7 @@ export default function DeviceForm() {
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
-                        {DEVICE_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                        {deviceCategories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     {errors.category && <p className="text-sm text-red-500">{errors.category}</p>}

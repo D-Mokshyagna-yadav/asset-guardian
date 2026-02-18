@@ -12,10 +12,10 @@ router.use(authenticate);
 router.get('/', async (req, res) => {
   try {
     const categories = await Category.find().sort({ name: 1 });
-    res.json(categories);
+    res.json({ success: true, data: { categories } });
   } catch (error) {
     console.error('Error fetching categories:', error);
-    res.status(500).json({ error: 'Failed to fetch categories' });
+    res.status(500).json({ success: false, error: 'Failed to fetch categories' });
   }
 });
 
@@ -24,12 +24,12 @@ router.get('/:id', async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
     if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
+      return res.status(404).json({ success: false, error: 'Category not found' });
     }
-    return res.json(category);
+    return res.json({ success: true, data: { category } });
   } catch (error) {
     console.error('Error fetching category:', error);
-    return res.status(500).json({ error: 'Failed to fetch category' });
+    return res.status(500).json({ success: false, error: 'Failed to fetch category' });
   }
 });
 
@@ -39,10 +39,10 @@ router.post('/', authorize('ADMIN'), async (req, res) => {
     const { name, description } = req.body;
     const category = new Category({ name, description });
     await category.save();
-    res.status(201).json(category);
+    res.status(201).json({ success: true, data: { category } });
   } catch (error) {
     console.error('Error creating category:', error);
-    res.status(500).json({ error: 'Failed to create category' });
+    res.status(500).json({ success: false, error: 'Failed to create category' });
   }
 });
 
@@ -56,12 +56,12 @@ router.put('/:id', authorize('ADMIN'), async (req, res) => {
       { new: true, runValidators: true }
     );
     if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
+      return res.status(404).json({ success: false, error: 'Category not found' });
     }
-    return res.json(category);
+    return res.json({ success: true, data: { category } });
   } catch (error) {
     console.error('Error updating category:', error);
-    return res.status(500).json({ error: 'Failed to update category' });
+    return res.status(500).json({ success: false, error: 'Failed to update category' });
   }
 });
 
@@ -70,12 +70,12 @@ router.delete('/:id', authorize('ADMIN'), async (req, res) => {
   try {
     const category = await Category.findByIdAndDelete(req.params.id);
     if (!category) {
-      return res.status(404).json({ error: 'Category not found' });
+      return res.status(404).json({ success: false, error: 'Category not found' });
     }
-    return res.json({ message: 'Category deleted successfully' });
+    return res.json({ success: true, message: 'Category deleted successfully' });
   } catch (error) {
     console.error('Error deleting category:', error);
-    return res.status(500).json({ error: 'Failed to delete category' });
+    return res.status(500).json({ success: false, error: 'Failed to delete category' });
   }
 });
 
