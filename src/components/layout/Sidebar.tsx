@@ -12,7 +12,7 @@ import {
   UserCircle,
   Trash2,
   MapPin,
-  Settings2,
+  Tags,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRef, useEffect, useState } from 'react';
@@ -25,7 +25,7 @@ const navigation = [
   { name: 'Assignments', href: '/assignments', icon: ClipboardList },
   { name: 'Scrapped', href: '/scrapped', icon: Trash2 },
   { name: 'Audit Logs', href: '/audit-logs', icon: History },
-  { name: 'Settings', href: '/settings', icon: Settings2 },
+  { name: 'Categories', href: '/categories', icon: Tags },
 ];
 
 export function Sidebar() {

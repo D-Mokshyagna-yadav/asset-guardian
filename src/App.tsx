@@ -22,7 +22,7 @@ import AssignmentDetails from "./pages/AssignmentDetails";
 import AssignmentForm from "./pages/AssignmentForm";
 import Profile from './pages/Profile';
 import Scrapped from './pages/Scrapped';import Locations from './pages/Locations';
-import Settings from './pages/Settings';import NotFound from "./pages/NotFound";
+import Categories from './pages/Settings';import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -62,7 +62,7 @@ const App = () => (
                 <Route path="/audit-logs/:id" element={<AuditLogDetails />} />
                 <Route path="/scrapped" element={<Scrapped />} />
                 <Route path="/locations" element={<Locations />} />
-                <Route path="/settings" element={<Settings />} />
+                <Route path="/categories" element={<Categories />} />
                 <Route path="/profile" element={<Profile />} />
               </Route>
 

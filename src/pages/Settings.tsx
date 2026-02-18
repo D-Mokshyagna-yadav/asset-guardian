@@ -25,7 +25,6 @@ import {
   Edit,
   Palette,
   Shield,
-  Settings2,
   Loader2,
 } from 'lucide-react';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -307,18 +306,18 @@ function RoleColorsSection() {
   );
 }
 
-// ─── Main Settings Page ───
-export default function SettingsPage() {
+// ─── Main Categories Page ───
+export default function CategoriesPage() {
   return (
     <div className="p-6 lg:p-8">
       <div className="mb-8 animate-slide-up">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-slate-100">
-            <Settings2 className="h-6 w-6 text-slate-600" />
+          <div className="p-2.5 rounded-xl bg-blue-100">
+            <Tags className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Settings</h1>
-            <p className="text-muted-foreground mt-0.5">Manage categories, status styles, and system configuration</p>
+            <h1 className="text-2xl font-bold text-foreground">Categories</h1>
+            <p className="text-muted-foreground mt-0.5">Manage device categories, status styles, and role colors</p>
           </div>
         </div>
       </div>
