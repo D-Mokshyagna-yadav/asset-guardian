@@ -37,27 +37,27 @@ export default function AssignmentForm() {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [devRes, deptRes, assignRes] = await Promise.all([
+        const [devRes, deptRes] = await Promise.all([
           devicesApi.getDevices({ limit: 200 }),
           departmentsApi.getDepartments({ limit: 100 }),
-          assignmentsApi.getAssignments({ limit: 500 }),
         ]);
         const allDevices = devRes.data.data?.devices || [];
         setDevices(allDevices);
         setDepartments(deptRes.data.data?.departments || []);
 
-        // Compute available quantity per device
-        const allAssignments: Assignment[] = Array.isArray(assignRes.data.data) ? assignRes.data.data : [];
+        // Fetch availability for all devices in parallel using the server endpoint
+        const availResults = await Promise.all(
+          allDevices.map(async (dev) => {
+            try {
+              const res = await devicesApi.getAvailableQuantity(dev.id);
+              return { id: dev.id, available: res.data.data?.available ?? dev.quantity };
+            } catch {
+              return { id: dev.id, available: dev.quantity };
+            }
+          })
+        );
         const availMap: Record<string, number> = {};
-        for (const dev of allDevices) {
-          const assignedQty = allAssignments
-            .filter(a => {
-              const aDevId = typeof a.deviceId === 'object' ? a.deviceId.id : a.deviceId;
-              return aDevId === dev.id && (a.status === 'ACTIVE' || a.status === 'MAINTENANCE');
-            })
-            .reduce((sum, a) => sum + a.quantity, 0);
-          availMap[dev.id] = dev.quantity - assignedQty;
-        }
+        for (const r of availResults) availMap[r.id] = r.available;
         setDeviceAvailability(availMap);
 
         if (id) {

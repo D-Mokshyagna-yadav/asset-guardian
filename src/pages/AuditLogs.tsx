@@ -12,7 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Search, Filter, FileText, Download, Eye } from 'lucide-react';
+import { Search, Filter, FileText, Download, Eye, Trash2, AlertTriangle } from 'lucide-react';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { toast } from 'sonner';
 
 const actionTypes = ['All', 'CREATE', 'UPDATE', 'DELETE', 'STATUS_CHANGE'];
 const entityTypes = ['All', 'Device', 'Assignment', 'Department'];
@@ -115,21 +117,9 @@ export default function AuditLogs() {
   const [entityFilter, setEntityFilter] = useState('All');
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const confirm = useConfirm();
 
   useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const params: Record<string, string> = {};
-        if (actionFilter !== 'All') params.action = actionFilter;
-        if (entityFilter !== 'All') params.entityType = entityFilter;
-        const res = await auditLogsApi.getAuditLogs({ ...params, limit: 200 });
-        setLogs(res.data.data?.auditLogs || []);
-      } catch (err) {
-        console.error('Failed to fetch audit logs', err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchLogs();
   }, [actionFilter, entityFilter]);
 
@@ -141,6 +131,56 @@ export default function AuditLogs() {
       log.entityId.toLowerCase().includes(q)
     );
   });
+
+  const fetchLogs = async () => {
+    setLoading(true);
+    try {
+      const params: Record<string, string> = {};
+      if (actionFilter !== 'All') params.action = actionFilter;
+      if (entityFilter !== 'All') params.entityType = entityFilter;
+      const res = await auditLogsApi.getAuditLogs({ ...params, limit: 200 });
+      setLogs(res.data.data?.auditLogs || []);
+    } catch (err) {
+      console.error('Failed to fetch audit logs', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteLog = async (logId: string) => {
+    const ok = await confirm({
+      title: 'Delete Audit Log',
+      description: 'Permanently delete this audit log entry? This cannot be undone.',
+      confirmText: 'Delete',
+      variant: 'destructive',
+    });
+    if (!ok) return;
+    try {
+      await auditLogsApi.deleteAuditLog(logId);
+      setLogs((prev) => prev.filter((l) => l.id !== logId));
+      toast.success('Audit log deleted');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to delete audit log');
+    }
+  };
+
+  const handleCleanupOldLogs = async () => {
+    const ok = await confirm({
+      title: 'Cleanup Old Logs',
+      description: 'This will permanently delete all audit logs older than 90 days. This action cannot be undone.',
+      confirmText: 'Yes, Clean Up',
+      variant: 'destructive',
+    });
+    if (!ok) return;
+    try {
+      const res = await auditLogsApi.deleteOldAuditLogs(90);
+      const count = (res.data as any).deletedCount || 0;
+      toast.success(`Cleaned up ${count} old audit log${count !== 1 ? 's' : ''}`);
+      fetchLogs();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Failed to cleanup logs');
+    }
+  };
 
   const getActionColor = (action: string) => {
     switch (action) {
@@ -164,10 +204,16 @@ export default function AuditLogs() {
           <h1 className="text-2xl font-bold text-foreground">Audit Logs</h1>
           <p className="text-muted-foreground mt-1">Complete history of all system changes</p>
         </div>
-        <Button variant="outline" className="btn-press">
-          <Download className="h-4 w-4 mr-2" />
-          Export Logs
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="btn-press text-red-600 hover:text-red-700" onClick={handleCleanupOldLogs}>
+            <AlertTriangle className="h-4 w-4 mr-1" />
+            Cleanup 90d+
+          </Button>
+          <Button variant="outline" className="btn-press">
+            <Download className="h-4 w-4 mr-2" />
+            Export Logs
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -275,6 +321,9 @@ export default function AuditLogs() {
                         <Eye className="h-4 w-4 hover:scale-110 transition-transform" />
                       </Button>
                     </Link>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600 hover:text-red-700" onClick={() => handleDeleteLog(log.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </div>

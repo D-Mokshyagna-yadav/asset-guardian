@@ -11,6 +11,8 @@ import {
   Server,
   UserCircle,
   Trash2,
+  MapPin,
+  Settings2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRef, useEffect, useState } from 'react';
@@ -19,9 +21,11 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Inventory', href: '/inventory', icon: Monitor },
   { name: 'Departments', href: '/departments', icon: Building2 },
+  { name: 'Locations', href: '/locations', icon: MapPin },
   { name: 'Assignments', href: '/assignments', icon: ClipboardList },
   { name: 'Scrapped', href: '/scrapped', icon: Trash2 },
   { name: 'Audit Logs', href: '/audit-logs', icon: History },
+  { name: 'Settings', href: '/settings', icon: Settings2 },
 ];
 
 export function Sidebar() {

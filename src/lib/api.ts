@@ -144,10 +144,15 @@ export const devicesApi = {
   deleteDevice: (id: string) => api.delete<ApiResponse>(`/devices/${id}`),
   
   getDeviceStats: () => api.get<ApiResponse<{
-    total: number;
-    byStatus: Record<string, number>;
-    byCategory: Record<string, number>;
-    byDepartment: Record<string, number>;
+    overview: {
+      totalDevices: number;
+      totalValue: number;
+      inStock: number;
+      assigned: number;
+      maintenance: number;
+      scrapped: number;
+    };
+    categoryBreakdown: Array<{ _id: string; count: number; totalValue: number }>;
   }>>('/devices/stats'),
 
   getAvailableQuantity: (id: string) => api.get<ApiResponse<{

@@ -26,24 +26,36 @@ function AnimatedStatValue({ value, formatAsPrice }: { value: number; formatAsPr
   return <>{animated.toLocaleString()}</>;
 }
 
+interface DeviceStatsOverview {
+  totalDevices: number;
+  totalValue: number;
+  inStock: number;
+  assigned: number;
+  maintenance: number;
+  scrapped: number;
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const [devices, setDevices] = useState<Device[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [statsOverview, setStatsOverview] = useState<DeviceStatsOverview | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const [devRes, logRes, assignRes] = await Promise.all([
+        const [devRes, logRes, assignRes, statsRes] = await Promise.all([
           devicesApi.getDevices({ limit: 100 }),
           auditLogsApi.getAuditLogs({ limit: 5 }),
           assignmentsApi.getAssignments({ limit: 100 }),
+          devicesApi.getDeviceStats(),
         ]);
         setDevices(devRes.data.data?.devices || []);
         setAuditLogs(logRes.data.data?.auditLogs || []);
         setAssignments(Array.isArray(assignRes.data.data) ? assignRes.data.data : []);
+        setStatsOverview(statsRes.data.data?.overview || null);
       } catch (error) {
         console.error('Failed to load dashboard data:', error);
       } finally {
@@ -53,17 +65,17 @@ export default function Dashboard() {
     loadData();
   }, []);
 
-  const stats = {
-    total: devices.length,
+  const stats = statsOverview || {
+    totalDevices: devices.length,
+    totalValue: devices.reduce((sum, d) => sum + d.cost * d.quantity, 0),
     inStock: devices.filter(d => d.status === 'IN_STOCK').length,
     assigned: devices.filter(d => d.status === 'ASSIGNED').length,
     maintenance: devices.filter(d => d.status === 'MAINTENANCE').length,
     scrapped: devices.filter(d => d.status === 'SCRAPPED').length,
-    totalValue: devices.reduce((sum, d) => sum + d.cost * d.quantity, 0),
   };
 
   const statCards = [
-    { title: 'Total Devices', value: stats.total, formatAsPrice: false, icon: Monitor, color: 'text-blue-600', bgColor: 'bg-blue-100' },
+    { title: 'Total Devices', value: stats.totalDevices, formatAsPrice: false, icon: Monitor, color: 'text-blue-600', bgColor: 'bg-blue-100' },
     { title: 'In Stock', value: stats.inStock, formatAsPrice: false, icon: Package, color: 'text-emerald-600', bgColor: 'bg-emerald-100' },
     { title: 'Assigned', value: stats.assigned, formatAsPrice: false, icon: ClipboardCheck, color: 'text-teal-600', bgColor: 'bg-teal-100' },
     { title: 'Maintenance', value: stats.maintenance, formatAsPrice: false, icon: Wrench, color: 'text-amber-600', bgColor: 'bg-amber-100' },
